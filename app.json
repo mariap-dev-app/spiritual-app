@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Spiritual app (prototype)",
+    "slug": "spiritual-app",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false
+    },
+    "plugins": ["expo-notifications"]
+  }
+}
