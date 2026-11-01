@@ -16,7 +16,7 @@ Data stays on the phone (AsyncStorage). No server, no account.
 1. Open snack.expo.dev and sign in.
 2. Replace `App.js` with the one from this repository.
 3. Add a file `src/content.js` and paste the content.
-4. Accept the missing dependencies Snack suggests (`expo-notifications`, `@react-native-async-storage/async-storage`).
+4. Accept the missing dependencies Snack suggests (`expo-notifications`, `@react-native-async-storage/async-storage`, `@react-native-community/datetimepicker`).
 5. Choose My Device and open it in Expo Go on the iPhone.
 
 ## Test locally (later)
@@ -31,7 +31,8 @@ Scan the QR code with the iPhone camera to open it in Expo Go.
 
 ## Decisions built in (28 October 2026)
 
-- S9a: one-off reminder at a chosen time; one active reminder at a time (a new one replaces the previous).
+- S9a: one-off reminder on a chosen date and time, picked in a calendar; one active reminder at a time (a new one replaces the previous).
+- On launch, the app cancels scheduled notifications it did not create (for example the daily reminders from prototype v1).
 - S8a: two techniques picked at random from the approved table for the group and duration.
 - S8: timer adjustable from 1 to 30 minutes; default 5 ("Under 5 min") or 15 ("I have 15 min").
 - Timer: one screen (description stays visible). Locking the phone does not stop it; the end arrives as a notification. Stop, or closing the app completely, returns to Home.

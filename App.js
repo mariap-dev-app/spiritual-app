@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   DEFAULT_MINUTES,
   GROUPS,
@@ -43,6 +45,22 @@ const INTERVAL_TRIGGER = TRIGGER.TIME_INTERVAL || 'timeInterval';
 async function hasPermission() {
   const { status } = await Notifications.getPermissionsAsync();
   return status === 'granted';
+}
+
+// Cancels scheduled notifications that this version did not create
+// (for example the daily "moments of the day" reminders from prototype v1).
+async function cancelOldNotifications() {
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const known = ['checkin', 'timerEnd'];
+    await Promise.all(
+      scheduled
+        .filter((n) => !known.includes(n.content?.data?.kind))
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
+    );
+  } catch (e) {
+    // Ignore for the prototype.
+  }
 }
 
 async function askPermission() {
@@ -97,7 +115,12 @@ function formatReminder(iso) {
   const today = dayKey(new Date());
   const tomorrow = dayKey(new Date(Date.now() + 24 * 3600 * 1000));
   const key = dayKey(at);
-  const label = key === today ? 'Today' : key === tomorrow ? 'Tomorrow' : at.toDateString();
+  const label =
+    key === today
+      ? 'Today'
+      : key === tomorrow
+      ? 'Tomorrow'
+      : at.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   return `${label} at ${formatTime(at)}`;
 }
 
@@ -348,7 +371,8 @@ export default function App() {
   const [screen, setScreen] = useState('home');
   const [session, setSession] = useState({});
   const [reminderReturn, setReminderReturn] = useState('home');
-  const [reminderDraft, setReminderDraft] = useState({ hour: 9, minute: 0 });
+  const [reminderDraft, setReminderDraft] = useState(new Date());
+  const [androidPicker, setAndroidPicker] = useState(null); // 'date' | 'time' | null
   const [message, setMessage] = useState('');
   const [now, setNow] = useState(Date.now());
 
@@ -358,6 +382,7 @@ export default function App() {
   // ----- Load saved data -----
   useEffect(() => {
     (async () => {
+      await cancelOldNotifications();
       const s = await loadJSON(KEYS.settings, DEFAULT_SETTINGS);
       if (s.reminder && new Date(s.reminder.at).getTime() < Date.now()) s.reminder = null;
       const c = await loadJSON(KEYS.checkins, []);
@@ -482,21 +507,26 @@ export default function App() {
   // ----- Reminder (S9a) -----
   const openReminder = (returnTo) => {
     const base = settings.reminder ? new Date(settings.reminder.at) : new Date(Date.now() + 60 * 60 * 1000);
-    setReminderDraft({ hour: base.getHours(), minute: Math.floor(base.getMinutes() / 5) * 5 });
+    base.setMinutes(Math.ceil(base.getMinutes() / 5) * 5, 0, 0);
+    setReminderDraft(base);
     setReminderReturn(returnTo);
+    setAndroidPicker(null);
     setMessage('');
     setScreen('reminder');
   };
 
-  const draftDate = () => {
-    const d = new Date();
-    d.setHours(reminderDraft.hour, reminderDraft.minute, 0, 0);
-    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
-    return d;
+  const onPickDate = (event, picked) => {
+    setAndroidPicker(null);
+    if (event?.type === 'dismissed' || !picked) return;
+    setReminderDraft(picked);
   };
 
   // ⚙️ Save the reminder and schedule the notification
   const saveReminder = async (testInSeconds) => {
+    if (!testInSeconds && reminderDraft.getTime() <= Date.now()) {
+      setMessage(TEXTS.reminderPast);
+      return;
+    }
     const ok = await askPermission();
     if (!ok) {
       setMessage(TEXTS.notificationsBlocked);
@@ -505,7 +535,7 @@ export default function App() {
     if (settings.reminder?.id) {
       await Notifications.cancelScheduledNotificationAsync(settings.reminder.id);
     }
-    const at = testInSeconds ? new Date(Date.now() + testInSeconds * 1000) : draftDate();
+    const at = testInSeconds ? new Date(Date.now() + testInSeconds * 1000) : reminderDraft;
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: TEXTS.reminderNotificationTitle,
@@ -843,25 +873,37 @@ export default function App() {
       );
       break;
 
-    // S9a Set up a reminder (one-off, at a chosen time)
+    // S9a Set up a reminder (one-off, on a chosen date and time)
     case 'reminder':
       body = (
         <Screen onBack={goHome}>
           <Text style={styles.title}>{TEXTS.reminderTitle}</Text>
-          <Stepper
-            label="Hour"
-            value={pad(reminderDraft.hour)}
-            onMinus={() => setReminderDraft((d) => ({ ...d, hour: (d.hour + 23) % 24 }))}
-            onPlus={() => setReminderDraft((d) => ({ ...d, hour: (d.hour + 1) % 24 }))}
-          />
-          <Stepper
-            label="Minutes"
-            value={pad(reminderDraft.minute)}
-            onMinus={() => setReminderDraft((d) => ({ ...d, minute: (d.minute + 55) % 60 }))}
-            onPlus={() => setReminderDraft((d) => ({ ...d, minute: (d.minute + 5) % 60 }))}
-          />
+          {Platform.OS === 'ios' ? (
+            <DateTimePicker
+              value={reminderDraft}
+              mode="datetime"
+              display="inline"
+              minimumDate={new Date()}
+              minuteInterval={5}
+              onChange={onPickDate}
+              style={{ alignSelf: 'center' }}
+            />
+          ) : (
+            <>
+              <Button label="Choose the date" kind="secondary" onPress={() => setAndroidPicker('date')} />
+              <Button label="Choose the time" kind="secondary" onPress={() => setAndroidPicker('time')} />
+              {androidPicker ? (
+                <DateTimePicker
+                  value={reminderDraft}
+                  mode={androidPicker}
+                  minimumDate={new Date()}
+                  onChange={onPickDate}
+                />
+              ) : null}
+            </>
+          )}
           <Text style={[styles.body, { textAlign: 'center' }]}>
-            {formatReminder(draftDate().toISOString())}
+            {formatReminder(reminderDraft.toISOString())}
           </Text>
           {message ? <Text style={styles.warning}>{message}</Text> : null}
           <Button label={TEXTS.reminderSave} onPress={() => saveReminder()} />

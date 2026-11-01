@@ -46,6 +46,7 @@ export const TEXTS = {
   reminderSave: 'Save reminder',
   reminderTest: 'Test: remind me in 10 seconds',
   reminderCancel: 'Cancel',
+  reminderPast: 'Choose a date and time in the future.',
   reminderNotificationTitle: 'Time to check in',
   reminderNotificationBody: 'Breathe in. How are you feeling?',
   timerNotificationTitle: 'Your practice is over',
