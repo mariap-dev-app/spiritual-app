@@ -6,7 +6,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,7 +16,6 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   DEFAULT_MINUTES,
   GROUPS,
@@ -270,6 +268,70 @@ function Stepper({ label, value, onMinus, onPlus }) {
   );
 }
 
+// S9a: month calendar to pick the reminder day. Past days cannot be picked.
+function DayCalendar({ value, onPick }) {
+  const [month, setMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const thisMonth = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const offset = (month.getDay() + 6) % 7; // Monday first
+  const cells = [];
+  for (let i = 0; i < offset; i += 1) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d += 1) cells.push(new Date(month.getFullYear(), month.getMonth(), d));
+
+  const canGoBack = month > thisMonth;
+
+  return (
+    <>
+      <View style={styles.monthRow}>
+        <Pressable
+          disabled={!canGoBack}
+          onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+        >
+          <Text style={[styles.monthNav, !canGoBack && { opacity: 0.2 }]}>‹</Text>
+        </Pressable>
+        <Text style={styles.body}>
+          {month.toLocaleString('en-GB', { month: 'long', year: 'numeric' })}
+        </Text>
+        <Pressable onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
+          <Text style={styles.monthNav}>›</Text>
+        </Pressable>
+      </View>
+      <View style={styles.calendar}>
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+          <Text key={`h${i}`} style={styles.calendarHead}>{d}</Text>
+        ))}
+        {cells.map((date, i) => {
+          if (!date) return <View key={`e${i}`} style={styles.calendarCell} />;
+          const past = date < todayStart;
+          const selected = dayKey(date) === dayKey(value);
+          return (
+            <Pressable
+              key={dayKey(date)}
+              disabled={past}
+              onPress={() => onPick(date)}
+              style={styles.calendarCell}
+            >
+              <View
+                style={[
+                  styles.calendarDot,
+                  selected && { backgroundColor: '#6B5FA5' },
+                ]}
+              >
+                <Text style={[styles.calendarDay, past && { opacity: 0.3 }, selected && { color: '#FFFFFF' }]}>
+                  {date.getDate()}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </>
+  );
+}
+
 // S13: Mood tracker, a month calendar coloured by the state of each day's last check-in.
 function MoodTracker({ checkins }) {
   const [month, setMonth] = useState(() => {
@@ -372,7 +434,6 @@ export default function App() {
   const [session, setSession] = useState({});
   const [reminderReturn, setReminderReturn] = useState('home');
   const [reminderDraft, setReminderDraft] = useState(new Date());
-  const [androidPicker, setAndroidPicker] = useState(null); // 'date' | 'time' | null
   const [message, setMessage] = useState('');
   const [now, setNow] = useState(Date.now());
 
@@ -510,15 +571,25 @@ export default function App() {
     base.setMinutes(Math.ceil(base.getMinutes() / 5) * 5, 0, 0);
     setReminderDraft(base);
     setReminderReturn(returnTo);
-    setAndroidPicker(null);
     setMessage('');
     setScreen('reminder');
   };
 
-  const onPickDate = (event, picked) => {
-    setAndroidPicker(null);
-    if (event?.type === 'dismissed' || !picked) return;
-    setReminderDraft(picked);
+  // Change the day, keep the time
+  const pickReminderDay = (day) => {
+    const d = new Date(day);
+    d.setHours(reminderDraft.getHours(), reminderDraft.getMinutes(), 0, 0);
+    setReminderDraft(d);
+    setMessage('');
+  };
+
+  // Change the time by a number of minutes, keep the day
+  const shiftReminderTime = (minutes) => {
+    const d = new Date(reminderDraft);
+    const total = (d.getHours() * 60 + d.getMinutes() + minutes + 24 * 60) % (24 * 60);
+    d.setHours(Math.floor(total / 60), total % 60, 0, 0);
+    setReminderDraft(d);
+    setMessage('');
   };
 
   // ⚙️ Save the reminder and schedule the notification
@@ -878,30 +949,21 @@ export default function App() {
       body = (
         <Screen onBack={goHome}>
           <Text style={styles.title}>{TEXTS.reminderTitle}</Text>
-          {Platform.OS === 'ios' ? (
-            <DateTimePicker
-              value={reminderDraft}
-              mode="datetime"
-              display="inline"
-              minimumDate={new Date()}
-              minuteInterval={5}
-              onChange={onPickDate}
-              style={{ alignSelf: 'center' }}
-            />
-          ) : (
-            <>
-              <Button label="Choose the date" kind="secondary" onPress={() => setAndroidPicker('date')} />
-              <Button label="Choose the time" kind="secondary" onPress={() => setAndroidPicker('time')} />
-              {androidPicker ? (
-                <DateTimePicker
-                  value={reminderDraft}
-                  mode={androidPicker}
-                  minimumDate={new Date()}
-                  onChange={onPickDate}
-                />
-              ) : null}
-            </>
-          )}
+          <Text style={styles.subtitle}>Day</Text>
+          <DayCalendar value={reminderDraft} onPick={pickReminderDay} />
+          <Text style={[styles.subtitle, { marginTop: 16 }]}>Time</Text>
+          <Stepper
+            label="hour"
+            value={pad(reminderDraft.getHours())}
+            onMinus={() => shiftReminderTime(-60)}
+            onPlus={() => shiftReminderTime(60)}
+          />
+          <Stepper
+            label="minutes"
+            value={pad(reminderDraft.getMinutes())}
+            onMinus={() => shiftReminderTime(-5)}
+            onPlus={() => shiftReminderTime(5)}
+          />
           <Text style={[styles.body, { textAlign: 'center' }]}>
             {formatReminder(reminderDraft.toISOString())}
           </Text>

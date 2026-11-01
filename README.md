@@ -16,7 +16,7 @@ Data stays on the phone (AsyncStorage). No server, no account.
 1. Open snack.expo.dev and sign in.
 2. Replace `App.js` with the one from this repository.
 3. Add a file `src/content.js` and paste the content.
-4. Accept the missing dependencies Snack suggests (`expo-notifications`, `@react-native-async-storage/async-storage`, `@react-native-community/datetimepicker`).
+4. Accept the missing dependencies Snack suggests (`expo-notifications`, `@react-native-async-storage/async-storage`). No other package is needed: the reminder calendar is built in plain code.
 5. Choose My Device and open it in Expo Go on the iPhone.
 
 ## Test locally (later)
