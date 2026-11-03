@@ -32,7 +32,7 @@ Scan the QR code with the iPhone camera to open it in Expo Go.
 ## Decisions built in (28 October 2026)
 
 - S9a: one-off reminder on a chosen date and time, picked in a calendar; one active reminder at a time (a new one replaces the previous).
-- On launch, the app cancels scheduled notifications it did not create (for example the daily reminders from prototype v1).
+- On launch, the app cancels every scheduled notification except the saved reminder and a timer-end alert (this removes the daily reminders from prototype v1).
 - S8a: two techniques picked at random from the approved table for the group and duration.
 - S8: timer adjustable from 1 to 30 minutes; default 5 ("Under 5 min") or 15 ("I have 15 min").
 - Timer: one screen (description stays visible). Locking the phone does not stop it; the end arrives as a notification. Stop, or closing the app completely, returns to Home.

@@ -45,15 +45,15 @@ async function hasPermission() {
   return status === 'granted';
 }
 
-// Cancels scheduled notifications that this version did not create
-// (for example the daily "moments of the day" reminders from prototype v1).
-async function cancelOldNotifications() {
+// Keeps only the notifications this version needs: the one saved reminder (S9a)
+// and a timer-end alert. Everything else is cancelled, including the daily
+// "moments of the day" reminders from prototype v1.
+async function cancelOldNotifications(keepReminderId) {
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    const known = ['checkin', 'timerEnd'];
     await Promise.all(
       scheduled
-        .filter((n) => !known.includes(n.content?.data?.kind))
+        .filter((n) => n.identifier !== keepReminderId && n.content?.data?.kind !== 'timerEnd')
         .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
     );
   } catch (e) {
@@ -443,9 +443,9 @@ export default function App() {
   // ----- Load saved data -----
   useEffect(() => {
     (async () => {
-      await cancelOldNotifications();
       const s = await loadJSON(KEYS.settings, DEFAULT_SETTINGS);
       if (s.reminder && new Date(s.reminder.at).getTime() < Date.now()) s.reminder = null;
+      await cancelOldNotifications(s.reminder?.id);
       const c = await loadJSON(KEYS.checkins, []);
       setSettings({ ...DEFAULT_SETTINGS, ...s });
       setCheckins(c);
