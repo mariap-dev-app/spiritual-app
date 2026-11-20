@@ -263,65 +263,26 @@ function Button({ label, onPress, kind = 'primary', disabled }) {
   );
 }
 
-// Organic bubble shape: slightly different corner radii, so it is not a perfect circle.
-function organicShape(size) {
-  return {
-    width: size,
-    height: size,
-    borderTopLeftRadius: size * 0.48,
-    borderTopRightRadius: size * 0.5,
-    borderBottomRightRadius: size * 0.46,
-    borderBottomLeftRadius: size * 0.52,
-  };
-}
-
-const bubbleShadow = {
-  shadowColor: '#1E3A5F',
-  shadowOpacity: 0.18,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 8 },
-  elevation: 4,
-};
-
-// Single soft highlight near the top-left of the bubble.
-function BubbleHighlight({ size }) {
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: size * 0.18,
-        left: size * 0.2,
-        width: size * 0.34,
-        height: size * 0.16,
-        borderRadius: size * 0.1,
-        backgroundColor: '#FFFFFF',
-        opacity: 0.7,
-        transform: [{ rotate: '-25deg' }],
-      }}
-    />
-  );
-}
-
+// Bubbles follow the "Palette Screens Preview": flat, perfectly round, sky blue,
+// no shadow and no highlight.
 function Bubble({ label, color, size = 120, onPress }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.bubble,
-        organicShape(size),
-        bubbleShadow,
-        { backgroundColor: color },
-        pressed && { transform: [{ scale: 0.95 }] },
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
+        pressed && { borderWidth: 2, borderColor: '#1E3A5F' },
       ]}
     >
-      <BubbleHighlight size={size} />
       <Text style={styles.bubbleText}>{label}</Text>
     </Pressable>
   );
 }
 
-// Breathing bubble: slowly expands and retracts (one breath = 8 seconds).
+// Breathing bubble, as on the preview's Session screen: a sky-blue circle inside a
+// pale-blue ring with a thin border. The inner circle slowly expands and retracts
+// (one breath = 8 seconds); the ring stays still.
 function BreathingBubble({ color = '#C9EBFF', size = 140 }) {
   const scale = useRef(new Animated.Value(0.8)).current;
   useEffect(() => {
@@ -334,20 +295,32 @@ function BreathingBubble({ color = '#C9EBFF', size = 140 }) {
     loop.start();
     return () => loop.stop();
   }, [scale]);
+  const ring = Math.round(size * 1.57); // 220 / 140 on the preview
   return (
-    <Animated.View
+    <View
       style={{
-        ...organicShape(size),
-        ...bubbleShadow,
-        backgroundColor: color,
-        opacity: 0.85,
-        transform: [{ scale }],
+        width: ring,
+        height: ring,
+        borderRadius: ring / 2,
+        backgroundColor: '#F0F7FC',
+        borderWidth: 1,
+        borderColor: '#D6E4EF',
+        alignItems: 'center',
+        justifyContent: 'center',
         alignSelf: 'center',
         marginVertical: 24,
       }}
     >
-      <BubbleHighlight size={size} />
-    </Animated.View>
+      <Animated.View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
+          transform: [{ scale }],
+        }}
+      />
+    </View>
   );
 }
 

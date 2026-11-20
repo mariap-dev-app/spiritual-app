@@ -57,4 +57,6 @@ npx expo start
 
 ## Placeholders
 
-Welcome and method texts, S5 explanations, technique steps, group colours.
+Welcome and method texts, S5 explanations, technique steps, mood tracker colours.
+
+Design: colours, type and shapes follow the "Palette Screens Preview" design (flat round sky-blue bubbles, breathing circle inside a pale-blue ring, Georgia headings in dark blue, 12 px buttons, 20 px pale-blue cards).
