@@ -154,23 +154,66 @@ function Button({ label, onPress, kind = 'primary', disabled }) {
   );
 }
 
+// Organic bubble shape: slightly different corner radii, so it is not a perfect circle.
+function organicShape(size) {
+  return {
+    width: size,
+    height: size,
+    borderTopLeftRadius: size * 0.48,
+    borderTopRightRadius: size * 0.5,
+    borderBottomRightRadius: size * 0.46,
+    borderBottomLeftRadius: size * 0.52,
+  };
+}
+
+const bubbleShadow = {
+  shadowColor: '#1E3A5F',
+  shadowOpacity: 0.18,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 4,
+};
+
+// Single soft highlight near the top-left of the bubble.
+function BubbleHighlight({ size }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: size * 0.18,
+        left: size * 0.2,
+        width: size * 0.34,
+        height: size * 0.16,
+        borderRadius: size * 0.1,
+        backgroundColor: '#FFFFFF',
+        opacity: 0.7,
+        transform: [{ rotate: '-25deg' }],
+      }}
+    />
+  );
+}
+
 function Bubble({ label, color, size = 120, onPress }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.bubble,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
+        organicShape(size),
+        bubbleShadow,
+        { backgroundColor: color },
         pressed && { transform: [{ scale: 0.95 }] },
       ]}
     >
+      <BubbleHighlight size={size} />
       <Text style={styles.bubbleText}>{label}</Text>
     </Pressable>
   );
 }
 
 // Breathing bubble: slowly expands and retracts (one breath = 8 seconds).
-function BreathingBubble({ color = '#C9B8E8', size = 140 }) {
+function BreathingBubble({ color = '#C9EBFF', size = 140 }) {
   const scale = useRef(new Animated.Value(0.8)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -185,16 +228,17 @@ function BreathingBubble({ color = '#C9B8E8', size = 140 }) {
   return (
     <Animated.View
       style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
+        ...organicShape(size),
+        ...bubbleShadow,
         backgroundColor: color,
         opacity: 0.85,
         transform: [{ scale }],
         alignSelf: 'center',
         marginVertical: 24,
       }}
-    />
+    >
+      <BubbleHighlight size={size} />
+    </Animated.View>
   );
 }
 
@@ -317,10 +361,10 @@ function DayCalendar({ value, onPick }) {
               <View
                 style={[
                   styles.calendarDot,
-                  selected && { backgroundColor: '#6B5FA5' },
+                  selected && { backgroundColor: '#C9EBFF' },
                 ]}
               >
-                <Text style={[styles.calendarDay, past && { opacity: 0.3 }, selected && { color: '#FFFFFF' }]}>
+                <Text style={[styles.calendarDay, past && { opacity: 0.3 }, selected && { color: '#10243A' }]}>
                   {date.getDate()}
                 </Text>
               </View>
@@ -1024,54 +1068,54 @@ export default function App() {
 // ---------- Styles (placeholders until the brand work) ----------
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F7F5F2', paddingTop: 56 },
+  screen: { flex: 1, backgroundColor: '#FFFFFF', paddingTop: 56 },
   content: { paddingHorizontal: 24, paddingBottom: 48 },
   back: { paddingHorizontal: 24, paddingVertical: 8 },
-  backText: { fontSize: 16, color: '#6B5FA5' },
+  backText: { fontSize: 16, color: '#1E3A5F' },
   backSpacer: { height: 36 },
-  title: { fontSize: 24, fontWeight: '600', color: '#2E2A3A', marginVertical: 16, textAlign: 'center' },
-  subtitle: { fontSize: 17, fontWeight: '600', color: '#2E2A3A', marginVertical: 8 },
-  body: { fontSize: 16, lineHeight: 23, color: '#3D3849', marginVertical: 8 },
-  small: { fontSize: 13, color: '#7A7488' },
+  title: { fontSize: 24, fontWeight: '600', color: '#1B2A3D', marginVertical: 16, textAlign: 'center' },
+  subtitle: { fontSize: 17, fontWeight: '600', color: '#1B2A3D', marginVertical: 8 },
+  body: { fontSize: 16, lineHeight: 23, color: '#1B2A3D', marginVertical: 8 },
+  small: { fontSize: 13, color: '#4F6275' },
   warning: { fontSize: 14, color: '#A3483D', marginVertical: 8 },
-  link: { fontSize: 16, color: '#6B5FA5' },
+  link: { fontSize: 16, color: '#1E3A5F' },
   homeTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 },
   button: {
-    backgroundColor: '#6B5FA5',
+    backgroundColor: '#C9EBFF',
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 28,
     alignItems: 'center',
     marginVertical: 6,
   },
-  buttonSecondary: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#6B5FA5' },
+  buttonSecondary: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#1E3A5F' },
   buttonLink: { backgroundColor: 'transparent' },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  buttonTextSecondary: { color: '#6B5FA5' },
-  buttonTextLink: { color: '#6B5FA5', fontWeight: '400', textDecorationLine: 'underline' },
+  buttonText: { color: '#10243A', fontSize: 16, fontWeight: '600' },
+  buttonTextSecondary: { color: '#1E3A5F' },
+  buttonTextLink: { color: '#1E3A5F', fontWeight: '400', textDecorationLine: 'underline' },
   bubbleGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginVertical: 12 },
   bubble: { alignItems: 'center', justifyContent: 'center', padding: 8 },
-  bubbleText: { color: '#2E2A3A', fontWeight: '600', textAlign: 'center' },
+  bubbleText: { color: '#1B2A3D', fontWeight: '600', textAlign: 'center' },
   tag: { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, marginTop: 8 },
-  tagText: { color: '#2E2A3A', fontWeight: '600' },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, marginVertical: 8 },
-  cardTitle: { fontSize: 17, fontWeight: '600', color: '#2E2A3A', marginBottom: 4 },
-  countdown: { fontSize: 56, fontWeight: '300', textAlign: 'center', color: '#2E2A3A', marginVertical: 24 },
+  tagText: { color: '#1B2A3D', fontWeight: '600' },
+  card: { backgroundColor: '#F0F7FC', borderRadius: 16, padding: 18, marginVertical: 8 },
+  cardTitle: { fontSize: 17, fontWeight: '600', color: '#1B2A3D', marginBottom: 4 },
+  countdown: { fontSize: 56, fontWeight: '300', textAlign: 'center', color: '#1B2A3D', marginVertical: 24 },
   stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 12, gap: 16 },
   stepButton: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: '#E6E1F2', alignItems: 'center', justifyContent: 'center',
+    width: 48, height: 48, borderRadius: 24, backgroundColor: '#F0F7FC', alignItems: 'center', justifyContent: 'center',
   },
-  stepButtonText: { fontSize: 26, color: '#6B5FA5' },
-  stepValue: { fontSize: 28, fontWeight: '500', color: '#2E2A3A' },
+  stepButtonText: { fontSize: 26, color: '#1E3A5F' },
+  stepValue: { fontSize: 28, fontWeight: '500', color: '#1B2A3D' },
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 16 },
   monthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  monthNav: { fontSize: 28, color: '#6B5FA5', paddingHorizontal: 12 },
+  monthNav: { fontSize: 28, color: '#1E3A5F', paddingHorizontal: 12 },
   calendar: { flexDirection: 'row', flexWrap: 'wrap' },
-  calendarHead: { width: `${100 / 7}%`, textAlign: 'center', color: '#7A7488', marginBottom: 6 },
+  calendarHead: { width: `${100 / 7}%`, textAlign: 'center', color: '#4F6275', marginBottom: 6 },
   calendarCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   calendarDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  calendarSelected: { borderWidth: 2, borderColor: '#2E2A3A' },
-  calendarDay: { color: '#2E2A3A' },
-  entry: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12, marginVertical: 4 },
-  entryTitle: { fontSize: 15, fontWeight: '600', color: '#2E2A3A' },
+  calendarSelected: { borderWidth: 2, borderColor: '#1B2A3D' },
+  calendarDay: { color: '#1B2A3D' },
+  entry: { backgroundColor: '#F0F7FC', borderRadius: 12, padding: 12, marginVertical: 4 },
+  entryTitle: { fontSize: 15, fontWeight: '600', color: '#1B2A3D' },
 });
