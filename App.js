@@ -705,8 +705,8 @@ export default function App() {
   const running = screen === 'technique' && session.timerEndAt;
   useEffect(() => {
     if (!running) return undefined;
-    const t = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(t);
+    const interval = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(interval);
   }, [running]);
 
   useEffect(() => {
@@ -1108,9 +1108,9 @@ export default function App() {
       body = (
         <Screen onBack={goHome}>
           <Text style={styles.title}>{TEXTS.optionsTitle}</Text>
-          {session.options.map((t) => (
+          {session.options.map((tech) => (
             <Pressable
-              key={t.name}
+              key={tech.name}
               style={styles.card}
               onPress={() => {
                 // ⚙️ Save the check-in before the practice
@@ -1124,17 +1124,17 @@ export default function App() {
                   path: 'B',
                   group: session.group,
                   emotion: session.emotion || null,
-                  technique: t.name,
+                  technique: tech.name,
                   timeChoice: session.timeChoice,
                   timerMinutes: minutes,
                   completed: null,
                 });
-                setSession((s) => ({ ...s, recordId: id, technique: t, timerMinutes: minutes, timerEndAt: null }));
+                setSession((s) => ({ ...s, recordId: id, technique: tech, timerMinutes: minutes, timerEndAt: null }));
                 setScreen('technique');
               }}
             >
-              <Text style={styles.cardTitle}>{t.name}</Text>
-              <Text style={styles.small}>{t.by}</Text>
+              <Text style={styles.cardTitle}>{tech.name}</Text>
+              <Text style={styles.small}>{tech.by}</Text>
             </Pressable>
           ))}
         </Screen>
