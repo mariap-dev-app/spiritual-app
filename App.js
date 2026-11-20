@@ -1,9 +1,10 @@
-// Spiritual app: prototype, version 3 (flow of 20 November 2026).
+// Spiritual app: prototype, version 3.1 (flow and design decisions of 20 November 2026).
 // Screen numbers (S0, S1...) match the FigJam user flow and its Notion text version.
 // Data stays on the phone (AsyncStorage). Content lives in src/content.js.
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   Linking,
@@ -14,6 +15,7 @@ import {
   Text,
   Vibration,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
@@ -221,12 +223,15 @@ function formatReminder(iso) {
   const at = new Date(iso);
   const today = dayKey(new Date());
   const tomorrow = dayKey(new Date(Date.now() + 24 * 3600 * 1000));
+  const yesterday = dayKey(new Date(Date.now() - 24 * 3600 * 1000));
   const key = dayKey(at);
   const label =
     key === today
       ? 'Today'
       : key === tomorrow
       ? 'Tomorrow'
+      : key === yesterday
+      ? 'Yesterday'
       : at.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   return `${label} at ${formatTime(at)}`;
 }
@@ -263,8 +268,8 @@ function Button({ label, onPress, kind = 'primary', disabled }) {
   );
 }
 
-// Bubbles follow the "Palette Screens Preview": flat, perfectly round, sky blue,
-// no shadow and no highlight.
+// Mood bubbles: flat, perfectly round, pastel colour of the emotion group
+// (design decision of 20 November 2026), no ring, no shadow.
 function Bubble({ label, color, size = 120, onPress }) {
   return (
     <Pressable
@@ -272,7 +277,7 @@ function Bubble({ label, color, size = 120, onPress }) {
       style={({ pressed }) => [
         styles.bubble,
         { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
-        pressed && { borderWidth: 2, borderColor: '#1E3A5F' },
+        pressed && { borderWidth: 2, borderColor: C.accent },
       ]}
     >
       <Text style={styles.bubbleText}>{label}</Text>
@@ -283,7 +288,7 @@ function Bubble({ label, color, size = 120, onPress }) {
 // Breathing bubble, as on the preview's Session screen: a sky-blue circle inside a
 // pale-blue ring with a thin border. The inner circle slowly expands and retracts
 // (one breath = 8 seconds); the ring stays still.
-function BreathingBubble({ color = '#C9EBFF', size = 140 }) {
+function BreathingBubble({ color = C.primary, size = 140 }) {
   const scale = useRef(new Animated.Value(0.8)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -302,9 +307,9 @@ function BreathingBubble({ color = '#C9EBFF', size = 140 }) {
         width: ring,
         height: ring,
         borderRadius: ring / 2,
-        backgroundColor: '#F0F7FC',
+        backgroundColor: C.surface,
         borderWidth: 1,
-        borderColor: '#D6E4EF',
+        borderColor: C.divider,
         alignItems: 'center',
         justifyContent: 'center',
         alignSelf: 'center',
@@ -324,17 +329,105 @@ function BreathingBubble({ color = '#C9EBFF', size = 140 }) {
   );
 }
 
-function Screen({ children, onBack, scroll = true }) {
+// Decorative background (design decision of 20 November 2026): thin outlined circles
+// of different sizes that drift slowly from the bottom to the top, behind the content.
+// Positions are fractions of the screen; static when "Reduce motion" is on.
+const BG_CIRCLES = [
+  { x: 0.05, size: 140, duration: 60000, delay: 0 },
+  { x: 0.7, size: 60, duration: 45000, delay: 0.3 },
+  { x: 0.4, size: 24, duration: 38000, delay: 0.6 },
+  { x: 0.85, size: 110, duration: 70000, delay: 0.15 },
+  { x: 0.15, size: 40, duration: 50000, delay: 0.8 },
+  { x: 0.55, size: 180, duration: 80000, delay: 0.45 },
+  { x: 0.3, size: 16, duration: 34000, delay: 0.2 },
+  { x: 0.9, size: 30, duration: 42000, delay: 0.7 },
+];
+
+function useReduceMotion() {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    let active = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((v) => active && setReduce(v)).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
+    return () => {
+      active = false;
+      sub?.remove?.();
+    };
+  }, []);
+  return reduce;
+}
+
+function FloatingCircle({ x, size, duration, delay, width, height, still }) {
+  const progress = useRef(new Animated.Value(delay)).current;
+  useEffect(() => {
+    if (still) return undefined;
+    // First run starts part-way up (delay), then loops from the bottom.
+    const first = Animated.timing(progress, {
+      toValue: 1, duration: duration * (1 - delay), easing: Easing.linear, useNativeDriver: true,
+    });
+    const loop = Animated.loop(
+      Animated.timing(progress, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })
+    );
+    let stopped = false;
+    first.start(({ finished }) => {
+      if (finished && !stopped) {
+        progress.setValue(0);
+        loop.start();
+      }
+    });
+    return () => {
+      stopped = true;
+      first.stop();
+      loop.stop();
+    };
+  }, [still, progress, duration, delay]);
+  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [height + size, -size] });
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left: x * width - size / 2,
+        top: still ? (1 - delay) * height : 0,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: 1,
+        borderColor: C.divider,
+        transform: still ? [] : [{ translateY }],
+      }}
+    />
+  );
+}
+
+function Background() {
+  const { width, height } = useWindowDimensions();
+  const still = useReduceMotion();
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {BG_CIRCLES.map((c, i) => (
+        <FloatingCircle key={i} {...c} width={width} height={height} still={still} />
+      ))}
+    </View>
+  );
+}
+
+// Every screen: background circles, then a top bar with "‹ Home" on the left
+// and an optional action on the right (the "Menu" link on Home).
+function Screen({ children, onBack, right, scroll = true }) {
   const Body = scroll ? ScrollView : View;
   return (
     <View style={styles.screen}>
-      {onBack ? (
-        <Pressable onPress={onBack} style={styles.back}>
-          <Text style={styles.backText}>‹ Home</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.backSpacer} />
-      )}
+      <Background />
+      <View style={styles.topBar}>
+        {onBack ? (
+          <Pressable onPress={onBack} hitSlop={8}>
+            <Text style={styles.backText}>‹ Home</Text>
+          </Pressable>
+        ) : (
+          <View />
+        )}
+        {right || null}
+      </View>
       <Body contentContainerStyle={scroll ? styles.content : undefined} style={!scroll ? styles.content : undefined}>
         {children}
       </Body>
@@ -354,7 +447,7 @@ function StateQuestion({ question, onPick }) {
       <BreathingBubble />
       <Animated.View style={[styles.bubbleGrid, { opacity: fade }]}>
         {GROUPS.map((g) => (
-          <Bubble key={g.id} label={g.label} color={C.primary} onPress={() => onPick(g.id)} />
+          <Bubble key={g.id} label={g.label} color={g.color} onPress={() => onPick(g.id)} />
         ))}
       </Animated.View>
     </>
@@ -369,7 +462,7 @@ function SpecifyEmotion({ groupId, onPick }) {
       <Text style={styles.title}>{TEXTS.specifyQuestion}</Text>
       <View style={styles.bubbleGrid}>
         {group.emotions.map((e) => (
-          <Bubble key={e} label={e} color={C.primary} size={92} onPress={() => onPick(e)} />
+          <Bubble key={e} label={e} color={group.color} size={92} onPress={() => onPick(e)} />
         ))}
       </View>
       <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
@@ -460,10 +553,10 @@ function DayCalendar({ value, onPick }) {
               <View
                 style={[
                   styles.calendarDot,
-                  selected && { backgroundColor: '#C9EBFF' },
+                  selected && { backgroundColor: C.primary },
                 ]}
               >
-                <Text style={[styles.calendarDay, past && { opacity: 0.3 }, selected && { color: '#10243A' }]}>
+                <Text style={[styles.calendarDay, past && { opacity: 0.3 }, selected && { color: C.onPrimary }]}>
                   {date.getDate()}
                 </Text>
               </View>
@@ -529,6 +622,7 @@ function MoodTracker({ checkins }) {
                 style={[
                   styles.calendarDot,
                   { backgroundColor: color },
+                  last && styles.calendarFilled,
                   selected === k && styles.calendarSelected,
                 ]}
               >
@@ -933,27 +1027,68 @@ export default function App() {
       );
       break;
 
-    // S1 Home screen with a floating bubble
-    case 'home':
+    // S1 Home: Menu link top right, bubble at the same height as on Welcome,
+    // prompt under the bubble, next reminder and last check-in.
+    case 'home': {
+      const lastCheckin = checkins.length
+        ? checkins.reduce((a, b) => (a.createdAt > b.createdAt ? a : b))
+        : null;
+      const lastGroup = lastCheckin ? groupById(lastCheckin.group) : null;
+      const next = nextReminderAt();
       body = (
-        <Screen>
-          <View style={styles.homeTop}>
-            <Pressable onPress={() => setScreen('tracker')}>
-              <Text style={styles.link}>Mood tracker</Text>
+        <Screen
+          right={
+            <Pressable onPress={() => setScreen('menu')} hitSlop={8}>
+              <Text style={styles.backText}>{TEXTS.menuLink}</Text>
             </Pressable>
-            <Pressable onPress={() => { setMessage(''); setScreen('settings'); }}>
-              <Text style={styles.link}>Settings</Text>
-            </Pressable>
-          </View>
+          }
+        >
           <Pressable onPress={() => { setSession({ source: 'home' }); setScreen('checkin'); }}>
-            <BreathingBubble size={180} />
+            <BreathingBubble />
           </Pressable>
-          <Text style={[styles.body, { textAlign: 'center' }]}>{TEXTS.homeTap}</Text>
-          {nextReminderAt() ? (
-            <Text style={[styles.small, { textAlign: 'center', marginTop: 12 }]}>
-              Next reminder: {formatReminder(nextReminderAt())}
+          <Text style={styles.title}>{TEXTS.homeTap}</Text>
+          {next ? (
+            <Text style={[styles.small, { textAlign: 'center' }]}>
+              Next reminder: {formatReminder(next)}
             </Text>
           ) : null}
+          {lastCheckin ? (
+            <Text style={[styles.small, { textAlign: 'center', marginTop: 4 }]}>
+              Last check-in: {formatReminder(lastCheckin.createdAt)}
+              {` · ${lastCheckin.emotion || lastGroup?.label || ''}`}
+            </Text>
+          ) : null}
+        </Screen>
+      );
+      break;
+    }
+
+    // S19 Menu: Mood tracker, Journaling, Vision board, Settings
+    case 'menu':
+      body = (
+        <Screen onBack={goHome}>
+          <Text style={styles.title}>{TEXTS.menuTitle}</Text>
+          {[
+            { label: TEXTS.menuTracker, onPress: () => setScreen('tracker') },
+            { label: TEXTS.menuJournaling, soon: true },
+            { label: TEXTS.menuVisionBoard, soon: true },
+            { label: TEXTS.menuSettings, onPress: () => { setMessage(''); setScreen('settings'); } },
+          ].map((item) => (
+            <Pressable
+              key={item.label}
+              disabled={item.soon}
+              onPress={item.onPress}
+              style={({ pressed }) => [styles.menuCard, pressed && { borderColor: C.accent }]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cardTitle, { marginBottom: 0 }, item.soon && { color: C.muted }]}>
+                  {item.label}
+                </Text>
+                {item.soon ? <Text style={styles.small}>{TEXTS.menuSoon}</Text> : null}
+              </View>
+              {item.soon ? null : <Text style={styles.chevron}>›</Text>}
+            </Pressable>
+          ))}
         </Screen>
       );
       break;
@@ -993,7 +1128,7 @@ export default function App() {
     case 'explain':
       body = (
         <Screen onBack={goHome}>
-          <View style={[styles.tag, { backgroundColor: C.surface }]}>
+          <View style={[styles.tag, { backgroundColor: C.primary }]}>
             <Text style={styles.tagText}>
               {group.label}
               {session.emotion ? ` · ${session.emotion}` : ''}
@@ -1317,29 +1452,31 @@ export default function App() {
   );
 }
 
-// ---------- Styles: graphic chart from the "Palette Screens Preview" design (20 November 2026) ----------
+// ---------- Styles: Palette Screens Preview + design decisions of 20 November 2026 (Figma) ----------
 
 const C = {
   background: '#FFFFFF',
   text: '#1B2A3D', // main text
   muted: '#4F6275', // secondary text, labels
-  accent: '#1E3A5F', // dark blue: headings, links, active states
+  accent: '#3D5A78', // muted blue: links, active states (no large accent fills)
   primary: '#C9EBFF', // sky blue: main buttons, bubbles, highlights
   onPrimary: '#10243A', // text on sky blue
   surface: '#F0F7FC', // pale blue cards
   divider: '#D6E4EF',
   warning: '#A3483D',
 };
-const SERIF = 'Georgia'; // headings (built into iOS)
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.background, paddingTop: 56 },
   content: { paddingHorizontal: 24, paddingBottom: 48 },
-  back: { paddingHorizontal: 24, paddingVertical: 8 },
-  backText: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: C.accent },
-  backSpacer: { height: 36 },
+  topBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, minHeight: 36,
+  },
+  backText: { fontSize: 16, lineHeight: 22, color: C.accent },
+  // Headings: bold system sans serif, as in the Figma screens
   title: {
-    fontFamily: SERIF, fontSize: 28, lineHeight: 34, fontWeight: '400', color: C.accent,
+    fontSize: 24, lineHeight: 30, fontWeight: '700', color: C.text,
     marginVertical: 16, textAlign: 'center',
   },
   subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: C.accent, marginTop: 8, marginBottom: 4 },
@@ -1347,7 +1484,11 @@ const styles = StyleSheet.create({
   small: { fontSize: 14, lineHeight: 20, color: C.muted },
   warning: { fontSize: 14, lineHeight: 20, color: C.warning, marginVertical: 8 },
   link: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: C.accent },
-  homeTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 },
+  menuCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 16,
+    borderWidth: 1, borderColor: 'transparent', paddingVertical: 18, paddingHorizontal: 20, marginVertical: 6,
+  },
+  chevron: { fontSize: 22, color: C.accent, marginLeft: 12 },
   button: {
     backgroundColor: C.primary,
     minHeight: 48,
@@ -1365,7 +1506,7 @@ const styles = StyleSheet.create({
   buttonTextLink: { color: C.accent, fontWeight: '600', fontSize: 14 },
   bubbleGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginVertical: 12 },
   bubble: { alignItems: 'center', justifyContent: 'center', padding: 8 },
-  bubbleText: { color: C.onPrimary, fontWeight: '600', textAlign: 'center' },
+  bubbleText: { color: C.text, fontWeight: '600', textAlign: 'center' },
   tag: { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, marginTop: 8 },
   tagText: { color: C.accent, fontSize: 13, fontWeight: '600' },
   card: { backgroundColor: C.surface, borderRadius: 20, padding: 16, marginVertical: 4 },
@@ -1385,6 +1526,7 @@ const styles = StyleSheet.create({
   calendarHead: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 13, fontWeight: '600', color: C.muted, marginBottom: 6 },
   calendarCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   calendarDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  calendarFilled: { borderWidth: 1, borderColor: C.divider },
   calendarSelected: { borderWidth: 2, borderColor: C.accent },
   calendarDay: { color: C.text },
   entry: { backgroundColor: C.surface, borderRadius: 20, padding: 16, marginVertical: 4 },

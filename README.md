@@ -45,8 +45,12 @@ npx expo start
 - Timer end with the app open: a soft vibration (if "Vibration" is on). No sound in the app yet; the end notification uses the "Sound" setting.
 - After-check (S15) can be skipped: the practice stays saved as done, without the after state.
 
+### Home and Menu
+- Home (S1): "Menu" link at the top right, the breathing bubble at the same height as on Welcome, "Tap the bubble to check in" under it, then the next reminder and the last check-in (date · emotion, or the state if no emotion was picked).
+- Menu (S19): Mood tracker, Journaling, Vision board, Settings. Journaling and Vision board are shown as "Coming after the beta" and cannot be opened.
+
 ### Mood tracker (S13)
-- Month calendar; each day takes the colour of its last check-in. Days with 3 or more check-ins get a ✓ (consistent day).
+- Opened from the Menu. Month calendar; each day takes the pastel colour of its last check-in. Days with 3 or more check-ins get a ✓ (consistent day).
 
 ### Onboarding
 - S0 welcome and method steps → S0a notification permission → S0b reminder frequency → first check-in.
@@ -57,6 +61,11 @@ npx expo start
 
 ## Placeholders
 
-Welcome and method texts, S5 explanations, technique steps, mood tracker colours.
+Welcome and method texts, S5 explanations, technique steps.
 
-Design: colours, type and shapes follow the "Palette Screens Preview" design (flat round sky-blue bubbles, breathing circle inside a pale-blue ring, Georgia headings in dark blue, 12 px buttons, 20 px pale-blue cards).
+Design: the "Palette Screens Preview" plus the design decisions of 20 November 2026, as in the Figma file "Spiritual App Design":
+- Accent #3D5A78 for links and active states; no large accent fills. Main buttons sky blue #C9EBFF.
+- Mood bubbles in the pastel of their group (strong positive #E8F6EC, low positive #FFFBEB, low negative #F0F7FC, strong negative #FBEEEB), labels #1B2A3D, no ring. The ring stays only around the breathing bubble.
+- Background: thin outlined circles (#D6E4EF) of different sizes drift slowly from the bottom to the top on every screen; they stay still when "Reduce motion" is on.
+- Headings in bold system sans serif (#1B2A3D), as in Figma. "‹ Home" on the left edge.
+- Dark theme: not decided yet.

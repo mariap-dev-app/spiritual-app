@@ -41,6 +41,13 @@ export const TEXTS = {
   frequencyContinue: 'Continue',
 
   homeTap: 'Tap the bubble to check in',
+  menuLink: 'Menu',
+  menuTitle: 'Menu',
+  menuTracker: 'Mood tracker',
+  menuJournaling: 'Journaling',
+  menuVisionBoard: 'Vision board',
+  menuSettings: 'Settings',
+  menuSoon: 'Coming after the beta',
 
   checkInQuestion: 'Take a breath in! How are you feeling?',
   afterQuestion: 'Take a breath in! How are you feeling now?',
@@ -92,12 +99,12 @@ export const CONSISTENT_DAY_CHECKINS = 3;
 
 // The four emotion groups, with their 10 emotions (from the
 // "Emotion x Spiritual/ Mindful Practice Map" in Notion).
-// Colours are placeholders until the brand work (phase 5).
+// Pastel bubble colours decided on 20 November 2026 (labels in #1B2A3D).
 export const GROUPS = [
   {
     id: 'strongPositive',
     label: 'Strong positive',
-    color: '#F2B544',
+    color: '#E8F6EC',
     emotions: [
       'Joyful', 'Excited', 'Enthusiastic', 'Inspired', 'Passionate',
       'Proud', 'Confident', 'Energised', 'Eager', 'Elated',
@@ -109,7 +116,7 @@ export const GROUPS = [
   {
     id: 'lowPositive',
     label: 'Low positive',
-    color: '#8CC59A',
+    color: '#FFFBEB',
     emotions: [
       'Calm', 'Peaceful', 'Content', 'Relaxed', 'Grateful',
       'Serene', 'At ease', 'Secure', 'Fulfilled', 'Loving',
@@ -121,7 +128,7 @@ export const GROUPS = [
   {
     id: 'lowNegative',
     label: 'Low negative',
-    color: '#7FA7D9',
+    color: '#F0F7FC',
     emotions: [
       'Sad', 'Tired', 'Bored', 'Lonely', 'Disappointed',
       'Discouraged', 'Empty', 'Numb', 'Drained', 'Powerless',
@@ -133,7 +140,7 @@ export const GROUPS = [
   {
     id: 'strongNegative',
     label: 'Strong negative',
-    color: '#D9776B',
+    color: '#FBEEEB',
     emotions: [
       'Angry', 'Anxious', 'Stressed', 'Frustrated', 'Overwhelmed',
       'Afraid', 'Irritated', 'Restless', 'Jealous', 'Panicked',
