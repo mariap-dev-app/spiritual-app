@@ -381,7 +381,7 @@ function StateQuestion({ question, onPick }) {
       <BreathingBubble />
       <Animated.View style={[styles.bubbleGrid, { opacity: fade }]}>
         {GROUPS.map((g) => (
-          <Bubble key={g.id} label={g.label} color={g.color} onPress={() => onPick(g.id)} />
+          <Bubble key={g.id} label={g.label} color={C.primary} onPress={() => onPick(g.id)} />
         ))}
       </Animated.View>
     </>
@@ -396,7 +396,7 @@ function SpecifyEmotion({ groupId, onPick }) {
       <Text style={styles.title}>{TEXTS.specifyQuestion}</Text>
       <View style={styles.bubbleGrid}>
         {group.emotions.map((e) => (
-          <Bubble key={e} label={e} color={group.color} size={92} onPress={() => onPick(e)} />
+          <Bubble key={e} label={e} color={C.primary} size={92} onPress={() => onPick(e)} />
         ))}
       </View>
       <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
@@ -1020,7 +1020,7 @@ export default function App() {
     case 'explain':
       body = (
         <Screen onBack={goHome}>
-          <View style={[styles.tag, { backgroundColor: group.color }]}>
+          <View style={[styles.tag, { backgroundColor: C.surface }]}>
             <Text style={styles.tagText}>
               {group.label}
               {session.emotion ? ` · ${session.emotion}` : ''}
@@ -1152,6 +1152,7 @@ export default function App() {
           {session.timerEndAt ? (
             <>
               <Text style={styles.countdown}>{formatCountdown(remaining)}</Text>
+              <Text style={styles.countdownLabel}>remaining</Text>
               <Button label={TEXTS.timerStop} kind="secondary" onPress={stopTimer} />
             </>
           ) : (
@@ -1262,7 +1263,7 @@ export default function App() {
 
           <View style={styles.settingRow}>
             <Text style={styles.subtitle}>Notifications</Text>
-            <Switch value={settings.notificationsOn} onValueChange={toggleNotifications} />
+            <Switch trackColor={{ true: C.accent }} value={settings.notificationsOn} onValueChange={toggleNotifications} />
           </View>
 
           <Text style={styles.subtitle}>Reminder frequency</Text>
@@ -1290,11 +1291,11 @@ export default function App() {
 
           <View style={styles.settingRow}>
             <Text style={styles.body}>Sound</Text>
-            <Switch value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
+            <Switch trackColor={{ true: C.accent }} value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
           </View>
           <View style={styles.settingRow}>
             <Text style={styles.body}>Vibration at the end of the timer</Text>
-            <Switch value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
+            <Switch trackColor={{ true: C.accent }} value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
           </View>
 
           <Text style={[styles.subtitle, { marginTop: 16 }]}>One-off reminder</Text>
@@ -1343,70 +1344,90 @@ export default function App() {
   );
 }
 
-// ---------- Styles (placeholders until the brand work) ----------
+// ---------- Styles: graphic chart from the "Palette Screens Preview" design (20 November 2026) ----------
+
+const C = {
+  background: '#FFFFFF',
+  text: '#1B2A3D', // main text
+  muted: '#4F6275', // secondary text, labels
+  accent: '#1E3A5F', // dark blue: headings, links, active states
+  primary: '#C9EBFF', // sky blue: main buttons, bubbles, highlights
+  onPrimary: '#10243A', // text on sky blue
+  surface: '#F0F7FC', // pale blue cards
+  divider: '#D6E4EF',
+  warning: '#A3483D',
+};
+const SERIF = 'Georgia'; // headings (built into iOS)
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF', paddingTop: 56 },
+  screen: { flex: 1, backgroundColor: C.background, paddingTop: 56 },
   content: { paddingHorizontal: 24, paddingBottom: 48 },
   back: { paddingHorizontal: 24, paddingVertical: 8 },
-  backText: { fontSize: 16, color: '#1E3A5F' },
+  backText: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: C.accent },
   backSpacer: { height: 36 },
-  title: { fontSize: 24, fontWeight: '600', color: '#1B2A3D', marginVertical: 16, textAlign: 'center' },
-  subtitle: { fontSize: 17, fontWeight: '600', color: '#1B2A3D', marginVertical: 8 },
-  body: { fontSize: 16, lineHeight: 23, color: '#1B2A3D', marginVertical: 8 },
-  small: { fontSize: 13, color: '#4F6275' },
-  warning: { fontSize: 14, color: '#A3483D', marginVertical: 8 },
-  link: { fontSize: 16, color: '#1E3A5F' },
+  title: {
+    fontFamily: SERIF, fontSize: 28, lineHeight: 34, fontWeight: '400', color: C.accent,
+    marginVertical: 16, textAlign: 'center',
+  },
+  subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: C.accent, marginTop: 8, marginBottom: 4 },
+  body: { fontSize: 16, lineHeight: 24, color: C.text, marginVertical: 8 },
+  small: { fontSize: 14, lineHeight: 20, color: C.muted },
+  warning: { fontSize: 14, lineHeight: 20, color: C.warning, marginVertical: 8 },
+  link: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: C.accent },
   homeTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 40 },
   button: {
-    backgroundColor: '#C9EBFF',
-    paddingVertical: 14,
+    backgroundColor: C.primary,
+    minHeight: 48,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 28,
+    borderRadius: 12,
     alignItems: 'center',
-    marginVertical: 6,
+    justifyContent: 'center',
+    marginVertical: 4,
   },
-  buttonSecondary: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#1E3A5F' },
+  buttonSecondary: { backgroundColor: C.background, borderWidth: 1, borderColor: C.muted },
   buttonLink: { backgroundColor: 'transparent' },
-  buttonText: { color: '#10243A', fontSize: 16, fontWeight: '600' },
-  buttonTextSecondary: { color: '#1E3A5F' },
-  buttonTextLink: { color: '#1E3A5F', fontWeight: '400', textDecorationLine: 'underline' },
+  buttonText: { color: C.onPrimary, fontSize: 16, fontWeight: '600' },
+  buttonTextSecondary: { color: C.text },
+  buttonTextLink: { color: C.accent, fontWeight: '600', fontSize: 14 },
   bubbleGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginVertical: 12 },
   bubble: { alignItems: 'center', justifyContent: 'center', padding: 8 },
-  bubbleText: { color: '#1B2A3D', fontWeight: '600', textAlign: 'center' },
-  tag: { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, marginTop: 8 },
-  tagText: { color: '#1B2A3D', fontWeight: '600' },
-  card: { backgroundColor: '#F0F7FC', borderRadius: 16, padding: 18, marginVertical: 8 },
-  cardTitle: { fontSize: 17, fontWeight: '600', color: '#1B2A3D', marginBottom: 4 },
-  countdown: { fontSize: 56, fontWeight: '300', textAlign: 'center', color: '#1B2A3D', marginVertical: 24 },
+  bubbleText: { color: C.onPrimary, fontWeight: '600', textAlign: 'center' },
+  tag: { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, marginTop: 8 },
+  tagText: { color: C.accent, fontSize: 13, fontWeight: '600' },
+  card: { backgroundColor: C.surface, borderRadius: 20, padding: 16, marginVertical: 4 },
+  cardTitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text, marginBottom: 4 },
+  countdown: { fontSize: 22, lineHeight: 28, fontWeight: '600', textAlign: 'center', color: C.text, marginTop: 24 },
+  countdownLabel: { fontSize: 14, lineHeight: 20, color: C.muted, textAlign: 'center', marginBottom: 24 },
   stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 12, gap: 16 },
   stepButton: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: '#F0F7FC', alignItems: 'center', justifyContent: 'center',
+    width: 48, height: 48, borderRadius: 12, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
   },
-  stepButtonText: { fontSize: 26, color: '#1E3A5F' },
-  stepValue: { fontSize: 28, fontWeight: '500', color: '#1B2A3D' },
-  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 16 },
+  stepButtonText: { fontSize: 24, color: C.accent },
+  stepValue: { fontSize: 22, lineHeight: 28, fontWeight: '600', color: C.text },
+  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
   monthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  monthNav: { fontSize: 28, color: '#1E3A5F', paddingHorizontal: 12 },
+  monthNav: { fontSize: 28, color: C.accent, paddingHorizontal: 12 },
   calendar: { flexDirection: 'row', flexWrap: 'wrap' },
-  calendarHead: { width: `${100 / 7}%`, textAlign: 'center', color: '#4F6275', marginBottom: 6 },
+  calendarHead: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 13, fontWeight: '600', color: C.muted, marginBottom: 6 },
   calendarCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   calendarDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  calendarSelected: { borderWidth: 2, borderColor: '#1B2A3D' },
-  calendarDay: { color: '#1B2A3D' },
-  entry: { backgroundColor: '#F0F7FC', borderRadius: 12, padding: 12, marginVertical: 4 },
-  entryTitle: { fontSize: 15, fontWeight: '600', color: '#1B2A3D' },
-  consistentMark: { position: 'absolute', bottom: 0, fontSize: 11, color: '#1E3A5F', fontWeight: '700' },
+  calendarSelected: { borderWidth: 2, borderColor: C.accent },
+  calendarDay: { color: C.text },
+  entry: { backgroundColor: C.surface, borderRadius: 20, padding: 16, marginVertical: 4 },
+  entryTitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text },
+  consistentMark: { position: 'absolute', bottom: 0, fontSize: 11, color: C.accent, fontWeight: '700' },
   choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
   choice: {
-    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#1E3A5F',
-    backgroundColor: 'transparent',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.muted,
+    backgroundColor: C.background,
   },
-  choiceSelected: { backgroundColor: '#C9EBFF', borderColor: '#C9EBFF' },
-  choiceText: { color: '#1E3A5F', fontSize: 15 },
-  choiceTextSelected: { color: '#10243A', fontWeight: '600' },
+  choiceSelected: { backgroundColor: C.primary, borderColor: C.primary },
+  choiceText: { color: C.text, fontSize: 15 },
+  choiceTextSelected: { color: C.onPrimary, fontWeight: '600' },
 });
