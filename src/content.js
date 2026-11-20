@@ -1,6 +1,7 @@
 // All texts and content of the app live in this file, so they can change
 // (or be translated later) without touching the screens in App.js.
 // Lines marked [Placeholder] are temporary and need Maria's content.
+// Titles: where a title has two phrases, \n starts the second phrase on a new line.
 
 // Settings for outside services. Leave a value empty to switch the service off.
 export const CONFIG = {
@@ -49,8 +50,8 @@ export const TEXTS = {
   menuSettings: 'Settings',
   menuSoon: 'Coming after the beta',
 
-  checkInQuestion: 'Take a breath in! How are you feeling?',
-  afterQuestion: 'Take a breath in! How are you feeling now?',
+  checkInQuestion: 'Take a breath in.\nHow are you feeling?',
+  afterQuestion: 'Take a breath in.\nHow are you feeling now?',
   afterSkip: 'Skip',
 
   specifyQuestion: 'Do you want to specify?',
@@ -63,7 +64,7 @@ export const TEXTS = {
 
   reminderAsk: 'Do you want to set up a reminder for the next session?',
   anotherSessionAsk:
-    "Thanks for recording! It's consistency that matters! Do you want to schedule another session?",
+    "Thanks for recording!\nIt's consistency that matters!\nDo you want to schedule another session?",
   yes: 'Yes!',
   no: 'No',
 
@@ -111,7 +112,7 @@ export const GROUPS = [
     ],
     explanation:
       '[Placeholder] Strong positive emotions carry a lot of energy. This is a good moment to let the feeling settle in your body and make it last.',
-    question: "That's great! Do you want to reinforce it?",
+    question: "That's great!\nDo you want to reinforce it?",
   },
   {
     id: 'lowPositive',
@@ -123,7 +124,7 @@ export const GROUPS = [
     ],
     explanation:
       '[Placeholder] You feel calm and steady. A short practice now helps you find this state again later.',
-    question: "That's a good start! Want to make it even better?",
+    question: "That's a good start!\nWant to make it even better?",
   },
   {
     id: 'lowNegative',
@@ -135,7 +136,7 @@ export const GROUPS = [
     ],
     explanation:
       "[Placeholder] Low emotions are part of life. You don't need to change them right away: noticing them is already a step.",
-    question: "That's ok! Do you want to improve it?",
+    question: "That's ok!\nDo you want to improve it?",
   },
   {
     id: 'strongNegative',
@@ -147,7 +148,7 @@ export const GROUPS = [
     ],
     explanation:
       '[Placeholder] Strong emotions show up in the body first. Calming the breath can help before anything else.',
-    question: 'That sounds hard. Would you like to work through it?',
+    question: 'That sounds hard.\nWould you like to work through it?',
   },
 ];
 

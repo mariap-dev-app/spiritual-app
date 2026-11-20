@@ -37,7 +37,7 @@ npx expo start
 - Tapping any reminder opens the check-in (S2).
 
 ### Check-in and practice
-- S2 and S3 share one screen: "Take a breath in! How are you feeling?", then the 4 state bubbles appear after one breath in (4 seconds).
+- S2 and S3 share one screen: "Take a breath in. / How are you feeling?", then the 4 state bubbles appear after one breath in (4 seconds).
 - S4 and S16 show the 10 emotions of the chosen group, plus Skip.
 - The intention follows from the state (negative → improve it, positive → make the most of it); no separate question.
 - S8a: two techniques picked at random from the approved table for the group and duration.
@@ -66,6 +66,10 @@ Welcome and method texts, S5 explanations, technique steps.
 Design: the "Palette Screens Preview" plus the design decisions of 20 November 2026, as in the Figma file "Spiritual App Design":
 - Accent #3D5A78 for links and active states; no large accent fills. Main buttons sky blue #C9EBFF.
 - Mood bubbles in the pastel of their group (strong positive #E8F6EC, low positive #FFFBEB, low negative #F0F7FC, strong negative #FBEEEB), labels #1B2A3D, no ring. The ring stays only around the breathing bubble.
-- Background: thin outlined circles (#D6E4EF) of different sizes drift slowly from the bottom to the top on every screen; they stay still when "Reduce motion" is on.
+- Background: thin outlined circles (#D6E4EF) of different sizes rise from the bottom to the top on every screen, 10 to 18 seconds per rise; they stay still when "Reduce motion" is on.
+- Titles are centred; where a title has two phrases, the second starts on a new line (`\n` in `src/content.js`).
+- Screens 08 to 12 and 15 (reminder question, time, choose practice, timer, thanks): the text block sits in the middle of the screen, slightly above the exact centre.
+- Explanation screen (06): the question title sits above the explanation text.
+- Dates and times: 24-hour clock, "Fri 20 Nov, 08:30" (Home, set-up reminder screen, Settings).
 - Headings in bold system sans serif (#1B2A3D), as in Figma. "‹ Home" on the left edge.
 - Dark theme: not decided yet.

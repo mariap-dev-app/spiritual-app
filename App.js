@@ -219,21 +219,12 @@ const pad = (n) => String(n).padStart(2, '0');
 const formatTime = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 const dayKey = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
+// Date and time format (decided 20 November 2026): "Fri 20 Nov, 08:30", 24-hour clock.
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function formatReminder(iso) {
   const at = new Date(iso);
-  const today = dayKey(new Date());
-  const tomorrow = dayKey(new Date(Date.now() + 24 * 3600 * 1000));
-  const yesterday = dayKey(new Date(Date.now() - 24 * 3600 * 1000));
-  const key = dayKey(at);
-  const label =
-    key === today
-      ? 'Today'
-      : key === tomorrow
-      ? 'Tomorrow'
-      : key === yesterday
-      ? 'Yesterday'
-      : at.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  return `${label} at ${formatTime(at)}`;
+  return `${WEEKDAYS[at.getDay()]} ${at.getDate()} ${MONTHS[at.getMonth()]}, ${formatTime(at)}`;
 }
 
 function formatCountdown(seconds) {
@@ -330,17 +321,18 @@ function BreathingBubble({ color = C.primary, size = 140 }) {
 }
 
 // Decorative background (design decision of 20 November 2026): thin outlined circles
-// of different sizes that drift slowly from the bottom to the top, behind the content.
+// of different sizes that rise from the bottom to the top (10 to 18 seconds per rise),
+// behind the content.
 // Positions are fractions of the screen; static when "Reduce motion" is on.
 const BG_CIRCLES = [
-  { x: 0.05, size: 140, duration: 60000, delay: 0 },
-  { x: 0.7, size: 60, duration: 45000, delay: 0.3 },
-  { x: 0.4, size: 24, duration: 38000, delay: 0.6 },
-  { x: 0.85, size: 110, duration: 70000, delay: 0.15 },
-  { x: 0.15, size: 40, duration: 50000, delay: 0.8 },
-  { x: 0.55, size: 180, duration: 80000, delay: 0.45 },
-  { x: 0.3, size: 16, duration: 34000, delay: 0.2 },
-  { x: 0.9, size: 30, duration: 42000, delay: 0.7 },
+  { x: 0.05, size: 140, duration: 16000, delay: 0 },
+  { x: 0.7, size: 60, duration: 12000, delay: 0.3 },
+  { x: 0.4, size: 24, duration: 10000, delay: 0.6 },
+  { x: 0.85, size: 110, duration: 17000, delay: 0.15 },
+  { x: 0.15, size: 40, duration: 13000, delay: 0.8 },
+  { x: 0.55, size: 180, duration: 18000, delay: 0.45 },
+  { x: 0.3, size: 16, duration: 11000, delay: 0.2 },
+  { x: 0.9, size: 30, duration: 14000, delay: 0.7 },
 ];
 
 function useReduceMotion() {
@@ -413,7 +405,9 @@ function Background() {
 
 // Every screen: background circles, then a top bar with "‹ Home" on the left
 // and an optional action on the right (the "Menu" link on Home).
-function Screen({ children, onBack, right, scroll = true }) {
+// centered: the text block sits in the middle, slightly above the exact centre
+// (screens 08 to 12 and 15 in Figma).
+function Screen({ children, onBack, right, centered = false, scroll = true }) {
   const Body = scroll ? ScrollView : View;
   return (
     <View style={styles.screen}>
@@ -428,7 +422,10 @@ function Screen({ children, onBack, right, scroll = true }) {
         )}
         {right || null}
       </View>
-      <Body contentContainerStyle={scroll ? styles.content : undefined} style={!scroll ? styles.content : undefined}>
+      <Body
+        contentContainerStyle={scroll ? [styles.content, centered && styles.centered] : undefined}
+        style={!scroll ? [styles.content, centered && styles.centered] : undefined}
+      >
         {children}
       </Body>
     </View>
@@ -1124,7 +1121,7 @@ export default function App() {
       );
       break;
 
-    // S5 Explanation + question
+    // S5 Question, then explanation (title above the text, 20 November 2026)
     case 'explain':
       body = (
         <Screen onBack={goHome}>
@@ -1134,8 +1131,8 @@ export default function App() {
               {session.emotion ? ` · ${session.emotion}` : ''}
             </Text>
           </View>
-          <Text style={styles.body}>{group.explanation}</Text>
           <Text style={styles.title}>{group.question}</Text>
+          <Text style={styles.body}>{group.explanation}</Text>
           <Button
             label={TEXTS.answerNope}
             kind="secondary"
@@ -1179,7 +1176,7 @@ export default function App() {
     // S9 Do you want to set up a reminder for the next session?
     case 'reminderAsk':
       body = (
-        <Screen onBack={goHome}>
+        <Screen onBack={goHome} centered>
           <Text style={styles.title}>{TEXTS.reminderAsk}</Text>
           <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
           <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
@@ -1190,7 +1187,7 @@ export default function App() {
     // S7 How much time do you have?
     case 'time':
       body = (
-        <Screen onBack={goHome}>
+        <Screen onBack={goHome} centered>
           <Text style={styles.title}>{TEXTS.timeQuestion}</Text>
           {[
             { key: 'under5', label: TEXTS.timeUnder5 },
@@ -1214,7 +1211,7 @@ export default function App() {
     // S8a Technique options
     case 'options':
       body = (
-        <Screen onBack={goHome}>
+        <Screen onBack={goHome} centered>
           <Text style={styles.title}>{TEXTS.optionsTitle}</Text>
           {session.options.map((tech) => (
             <Pressable
@@ -1253,7 +1250,7 @@ export default function App() {
     case 'technique': {
       const remaining = session.timerEndAt ? (session.timerEndAt - now) / 1000 : session.timerMinutes * 60;
       body = (
-        <Screen onBack={session.timerEndAt ? undefined : goHome}>
+        <Screen onBack={session.timerEndAt ? undefined : goHome} centered>
           <Text style={styles.title}>{session.technique.name}</Text>
           <Text style={styles.small}>{session.technique.by}</Text>
           <Text style={styles.body}>{TECHNIQUE_STEPS_PLACEHOLDER}</Text>
@@ -1324,7 +1321,7 @@ export default function App() {
     // S17 Thanks for recording!
     case 'thanks':
       body = (
-        <Screen>
+        <Screen centered>
           <Text style={styles.title}>{TEXTS.anotherSessionAsk}</Text>
           <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
           <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
@@ -1526,6 +1523,7 @@ const styles = StyleSheet.create({
   calendarHead: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 13, fontWeight: '600', color: C.muted, marginBottom: 6 },
   calendarCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   calendarDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  centered: { flexGrow: 1, justifyContent: 'center', paddingBottom: 120 },
   calendarFilled: { borderWidth: 1, borderColor: C.divider },
   calendarSelected: { borderWidth: 2, borderColor: C.accent },
   calendarDay: { color: C.text },
