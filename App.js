@@ -1,4 +1,4 @@
-// Spiritual app: prototype, version 3.1 (flow and design decisions of 20 November 2026).
+// Spiritual app: prototype, version 3.2 (flow, design decisions and Round 3 feedback of 20 November 2026).
 // Screen numbers (S0, S1...) match the FigJam user flow and its Notion text version.
 // Data stays on the phone (AsyncStorage). Content lives in src/content.js.
 
@@ -150,7 +150,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.3.1' },
+        properties: { ...properties, app_version: '0.3.2' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -404,22 +404,23 @@ function Background() {
 }
 
 // Every screen: background circles, then a top bar with "‹ Home" on the left
-// and an optional action on the right (the "Menu" link on Home).
+// (or another link, such as "Menu" on Home) and an optional action on the right.
 // centered: the text block sits in the middle, slightly above the exact centre
 // (screens 08 to 12 and 15 in Figma).
-function Screen({ children, onBack, right, centered = false, scroll = true }) {
+function Screen({ children, onBack, left, right, centered = false, scroll = true }) {
   const Body = scroll ? ScrollView : View;
   return (
     <View style={styles.screen}>
       <Background />
       <View style={styles.topBar}>
-        {onBack ? (
-          <Pressable onPress={onBack} hitSlop={8}>
-            <Text style={styles.backText}>‹ Home</Text>
-          </Pressable>
-        ) : (
-          <View />
-        )}
+        {left ||
+          (onBack ? (
+            <Pressable onPress={onBack} hitSlop={8}>
+              <Text style={styles.backText}>‹ Home</Text>
+            </Pressable>
+          ) : (
+            <View />
+          ))}
         {right || null}
       </View>
       <Body
@@ -501,67 +502,89 @@ function Choice({ options, value, onChange }) {
   );
 }
 
-// S9a: month calendar to pick the reminder day. Past days cannot be picked.
-function DayCalendar({ value, onPick }) {
-  const [month, setMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const thisMonth = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+// S9a: one scrolling picker row with day, hour and minute columns (24-hour time).
+// The selected value sits in the highlighted band in the middle.
+const WHEEL_ROW = 40;
+const WHEEL_VISIBLE = 5; // odd number: the middle row is the selected one
+const REMINDER_DAYS = 60; // days offered from today
 
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const offset = (month.getDay() + 6) % 7; // Monday first
-  const cells = [];
-  for (let i = 0; i < offset; i += 1) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d += 1) cells.push(new Date(month.getFullYear(), month.getMonth(), d));
+function WheelColumn({ items, index, onChange, flex = 1 }) {
+  const ref = useRef(null);
+  const settle = (y) => {
+    const i = Math.max(0, Math.min(items.length - 1, Math.round(y / WHEEL_ROW)));
+    if (i !== index) onChange(i);
+  };
+  return (
+    <ScrollView
+      ref={ref}
+      style={{ flex, height: WHEEL_ROW * WHEEL_VISIBLE }}
+      contentContainerStyle={{ paddingVertical: WHEEL_ROW * ((WHEEL_VISIBLE - 1) / 2) }}
+      contentOffset={{ x: 0, y: index * WHEEL_ROW }}
+      showsVerticalScrollIndicator={false}
+      snapToInterval={WHEEL_ROW}
+      decelerationRate="fast"
+      nestedScrollEnabled
+      onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.y)}
+      onScrollEndDrag={(e) => {
+        if (Math.abs(e.nativeEvent.velocity?.y || 0) < 0.05) settle(e.nativeEvent.contentOffset.y);
+      }}
+    >
+      {items.map((label, i) => (
+        <Pressable
+          key={`${label}-${i}`}
+          style={styles.wheelRow}
+          onPress={() => {
+            ref.current?.scrollTo({ y: i * WHEEL_ROW, animated: true });
+            onChange(i);
+          }}
+        >
+          <Text
+            style={[
+              styles.wheelText,
+              i === index && styles.wheelTextSelected,
+              { opacity: i === index ? 1 : Math.abs(i - index) === 1 ? 0.6 : 0.35 },
+            ]}
+          >
+            {label}
+          </Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
 
-  const canGoBack = month > thisMonth;
+function ReminderPicker({ value, onChange }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: REMINDER_DAYS }, (_, i) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + i));
+  const valueDay = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const dayIndex = Math.max(0, Math.min(REMINDER_DAYS - 1, Math.round((valueDay - today) / (24 * 3600 * 1000))));
+  const hours = Array.from({ length: 24 }, (_, i) => pad(i));
+  const minutes = Array.from({ length: 12 }, (_, i) => pad(i * 5));
+
+  const set = (patch) => {
+    const day = days[patch.day ?? dayIndex];
+    const d = new Date(day);
+    d.setHours(patch.hour ?? value.getHours(), patch.minute ?? value.getMinutes(), 0, 0);
+    onChange(d);
+  };
 
   return (
-    <>
-      <View style={styles.monthRow}>
-        <Pressable
-          disabled={!canGoBack}
-          onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-        >
-          <Text style={[styles.monthNav, !canGoBack && { opacity: 0.2 }]}>‹</Text>
-        </Pressable>
-        <Text style={styles.body}>
-          {month.toLocaleString('en-GB', { month: 'long', year: 'numeric' })}
-        </Text>
-        <Pressable onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
-          <Text style={styles.monthNav}>›</Text>
-        </Pressable>
-      </View>
-      <View style={styles.calendar}>
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-          <Text key={`h${i}`} style={styles.calendarHead}>{d}</Text>
-        ))}
-        {cells.map((date, i) => {
-          if (!date) return <View key={`e${i}`} style={styles.calendarCell} />;
-          const past = date < todayStart;
-          const selected = dayKey(date) === dayKey(value);
-          return (
-            <Pressable
-              key={dayKey(date)}
-              disabled={past}
-              onPress={() => onPick(date)}
-              style={styles.calendarCell}
-            >
-              <View
-                style={[
-                  styles.calendarDot,
-                  selected && { backgroundColor: C.primary },
-                ]}
-              >
-                <Text style={[styles.calendarDay, past && { opacity: 0.3 }, selected && { color: C.onPrimary }]}>
-                  {date.getDate()}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-    </>
+    <View style={styles.wheel}>
+      <View pointerEvents="none" style={styles.wheelBand} />
+      <WheelColumn
+        flex={1.6}
+        items={days.map((d) => `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`)}
+        index={dayIndex}
+        onChange={(i) => set({ day: i })}
+      />
+      <WheelColumn items={hours} index={value.getHours()} onChange={(i) => set({ hour: i })} />
+      <WheelColumn
+        items={minutes}
+        index={Math.round(value.getMinutes() / 5) % 12}
+        onChange={(i) => set({ minute: i * 5 })}
+      />
+    </View>
   );
 }
 
@@ -838,23 +861,6 @@ export default function App() {
     setScreen('reminder');
   };
 
-  // Change the day, keep the time
-  const pickReminderDay = (day) => {
-    const d = new Date(day);
-    d.setHours(reminderDraft.getHours(), reminderDraft.getMinutes(), 0, 0);
-    setReminderDraft(d);
-    setMessage('');
-  };
-
-  // Change the time by a number of minutes, keep the day
-  const shiftReminderTime = (minutes) => {
-    const d = new Date(reminderDraft);
-    const total = (d.getHours() * 60 + d.getMinutes() + minutes + 24 * 60) % (24 * 60);
-    d.setHours(Math.floor(total / 60), total % 60, 0, 0);
-    setReminderDraft(d);
-    setMessage('');
-  };
-
   // ⚙️ Save the reminder and schedule the notification
   const saveReminder = async (testInSeconds) => {
     if (!testInSeconds && reminderDraft.getTime() <= Date.now()) {
@@ -932,15 +938,6 @@ export default function App() {
     setSession({});
     setMessage('');
     setScreen('welcome');
-  };
-
-  // Next reminder shown on Home: the earliest planned random or one-off reminder.
-  const nextReminderAt = () => {
-    const nowMs = Date.now();
-    const times = [...(settings.randomPlan || [])];
-    if (settings.reminder) times.push(settings.reminder.at);
-    const future = times.filter((iso) => new Date(iso).getTime() > nowMs).sort();
-    return future.length ? future[0] : null;
   };
 
   const goHome = () => {
@@ -1024,41 +1021,25 @@ export default function App() {
       );
       break;
 
-    // S1 Home: Menu link top right, bubble at the same height as on Welcome,
-    // prompt under the bubble, next reminder and last check-in.
-    case 'home': {
-      const lastCheckin = checkins.length
-        ? checkins.reduce((a, b) => (a.createdAt > b.createdAt ? a : b))
-        : null;
-      const lastGroup = lastCheckin ? groupById(lastCheckin.group) : null;
-      const next = nextReminderAt();
+    // S1 Home (Round 3): "Menu" link on the left, the bubble at the same height as the
+    // check-in bubble, and the prompt as the only text.
+    case 'home':
       body = (
         <Screen
-          right={
+          left={
             <Pressable onPress={() => setScreen('menu')} hitSlop={8}>
               <Text style={styles.backText}>{TEXTS.menuLink}</Text>
             </Pressable>
           }
         >
+          <View style={styles.titleSpace} />
           <Pressable onPress={() => { setSession({ source: 'home' }); setScreen('checkin'); }}>
             <BreathingBubble />
           </Pressable>
           <Text style={styles.title}>{TEXTS.homeTap}</Text>
-          {next ? (
-            <Text style={[styles.small, { textAlign: 'center' }]}>
-              Next reminder: {formatReminder(next)}
-            </Text>
-          ) : null}
-          {lastCheckin ? (
-            <Text style={[styles.small, { textAlign: 'center', marginTop: 4 }]}>
-              Last check-in: {formatReminder(lastCheckin.createdAt)}
-              {` · ${lastCheckin.emotion || lastGroup?.label || ''}`}
-            </Text>
-          ) : null}
         </Screen>
       );
       break;
-    }
 
     // S19 Menu: Mood tracker, Journaling, Vision board, Settings
     case 'menu':
@@ -1238,8 +1219,7 @@ export default function App() {
                 setScreen('technique');
               }}
             >
-              <Text style={styles.cardTitle}>{tech.name}</Text>
-              <Text style={styles.small}>{tech.by}</Text>
+              <Text style={[styles.cardTitle, { marginBottom: 0 }]}>{tech.name}</Text>
             </Pressable>
           ))}
         </Screen>
@@ -1251,17 +1231,16 @@ export default function App() {
       const remaining = session.timerEndAt ? (session.timerEndAt - now) / 1000 : session.timerMinutes * 60;
       body = (
         <Screen onBack={session.timerEndAt ? undefined : goHome} centered>
-          <Text style={styles.title}>{session.technique.name}</Text>
-          <Text style={styles.small}>{session.technique.by}</Text>
-          <Text style={styles.body}>{TECHNIQUE_STEPS_PLACEHOLDER}</Text>
           {session.timerEndAt ? (
+            // S8b Timer running (Round 3): only the large timer and Stop
             <>
               <Text style={styles.countdown}>{formatCountdown(remaining)}</Text>
-              <Text style={styles.countdownLabel}>remaining</Text>
               <Button label={TEXTS.timerStop} kind="secondary" onPress={stopTimer} />
             </>
           ) : (
             <>
+              <Text style={styles.title}>{session.technique.name}</Text>
+              <Text style={styles.body}>{TECHNIQUE_STEPS_PLACEHOLDER}</Text>
               <Stepper
                 value={`${session.timerMinutes} min`}
                 label="Timer"
@@ -1322,6 +1301,7 @@ export default function App() {
     case 'thanks':
       body = (
         <Screen centered>
+          <Text style={[styles.small, { textAlign: 'center', color: C.text }]}>{TEXTS.thanksBody}</Text>
           <Text style={styles.title}>{TEXTS.anotherSessionAsk}</Text>
           <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
           <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
@@ -1334,24 +1314,14 @@ export default function App() {
       body = (
         <Screen onBack={goHome}>
           <Text style={styles.title}>{TEXTS.reminderTitle}</Text>
-          <Text style={styles.subtitle}>Day</Text>
-          <DayCalendar value={reminderDraft} onPick={pickReminderDay} />
-          <Text style={[styles.subtitle, { marginTop: 16 }]}>Time</Text>
-          <Stepper
-            label="hour"
-            value={pad(reminderDraft.getHours())}
-            onMinus={() => shiftReminderTime(-60)}
-            onPlus={() => shiftReminderTime(60)}
+          <ReminderPicker
+            value={reminderDraft}
+            onChange={(d) => {
+              setReminderDraft(d);
+              setMessage('');
+            }}
           />
-          <Stepper
-            label="minutes"
-            value={pad(reminderDraft.getMinutes())}
-            onMinus={() => shiftReminderTime(-5)}
-            onPlus={() => shiftReminderTime(5)}
-          />
-          <Text style={[styles.body, { textAlign: 'center' }]}>
-            {formatReminder(reminderDraft.toISOString())}
-          </Text>
+          <Text style={styles.body}>{formatReminder(reminderDraft.toISOString())}</Text>
           {message ? <Text style={styles.warning}>{message}</Text> : null}
           <Button label={TEXTS.reminderSave} onPress={() => saveReminder()} />
           <Button label={TEXTS.reminderTest} kind="link" onPress={() => saveReminder(10)} />
@@ -1471,12 +1441,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, minHeight: 36,
   },
   backText: { fontSize: 16, lineHeight: 22, color: C.accent },
-  // Headings: bold system sans serif, as in the Figma screens
+  // Type scale (20 November 2026): screen titles Regular 24, card and section titles
+  // Semi Bold 16, body Regular 16, small text Regular 14. System sans serif.
   title: {
-    fontSize: 24, lineHeight: 30, fontWeight: '700', color: C.text,
+    fontSize: 24, lineHeight: 30, fontWeight: '400', color: C.text,
     marginVertical: 16, textAlign: 'center',
   },
-  subtitle: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: C.accent, marginTop: 8, marginBottom: 4 },
+  subtitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text, marginTop: 8, marginBottom: 4 },
+  titleSpace: { height: 92 }, // height of a two-line title, so the Home bubble sits where the check-in bubble is
   body: { fontSize: 16, lineHeight: 24, color: C.text, marginVertical: 8 },
   small: { fontSize: 14, lineHeight: 20, color: C.muted },
   warning: { fontSize: 14, lineHeight: 20, color: C.warning, marginVertical: 8 },
@@ -1508,8 +1480,10 @@ const styles = StyleSheet.create({
   tagText: { color: C.accent, fontSize: 13, fontWeight: '600' },
   card: { backgroundColor: C.surface, borderRadius: 20, padding: 16, marginVertical: 4 },
   cardTitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text, marginBottom: 4 },
-  countdown: { fontSize: 22, lineHeight: 28, fontWeight: '600', textAlign: 'center', color: C.text, marginTop: 24 },
-  countdownLabel: { fontSize: 14, lineHeight: 20, color: C.muted, textAlign: 'center', marginBottom: 24 },
+  countdown: {
+    fontSize: 96, lineHeight: 112, fontWeight: '400', textAlign: 'center', color: C.text,
+    marginBottom: 24, fontVariant: ['tabular-nums'],
+  },
   stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 12, gap: 16 },
   stepButton: {
     width: 48, height: 48, borderRadius: 12, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
@@ -1523,6 +1497,17 @@ const styles = StyleSheet.create({
   calendarHead: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 13, fontWeight: '600', color: C.muted, marginBottom: 6 },
   calendarCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
   calendarDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  wheel: {
+    flexDirection: 'row', backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden',
+    marginVertical: 8, paddingHorizontal: 8,
+  },
+  wheelBand: {
+    position: 'absolute', left: 0, right: 0, top: WHEEL_ROW * ((WHEEL_VISIBLE - 1) / 2), height: WHEEL_ROW,
+    backgroundColor: C.primary, opacity: 0.6,
+  },
+  wheelRow: { height: WHEEL_ROW, alignItems: 'center', justifyContent: 'center' },
+  wheelText: { fontSize: 16, color: C.muted },
+  wheelTextSelected: { color: C.text, fontWeight: '600' },
   centered: { flexGrow: 1, justifyContent: 'center', paddingBottom: 120 },
   calendarFilled: { borderWidth: 1, borderColor: C.divider },
   calendarSelected: { borderWidth: 2, borderColor: C.accent },

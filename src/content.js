@@ -63,8 +63,8 @@ export const TEXTS = {
   quickTitle: 'A short practice for now',
 
   reminderAsk: 'Do you want to set up a reminder for the next session?',
-  anotherSessionAsk:
-    "Thanks for recording!\nIt's consistency that matters!\nDo you want to schedule another session?",
+  thanksBody: "Thanks for recording! It's consistency that matters!",
+  anotherSessionAsk: 'Do you want to schedule another session?',
   yes: 'Yes!',
   no: 'No',
 
@@ -77,7 +77,7 @@ export const TEXTS = {
   timerStart: 'Start',
   timerStop: 'Stop',
 
-  reminderTitle: 'Set up a one-off reminder',
+  reminderTitle: 'Set up a reminder',
   reminderSave: 'Save reminder',
   reminderTest: 'Test: remind me in 10 seconds',
   reminderCancel: 'Cancel',
@@ -98,7 +98,7 @@ export const TEXTS = {
 // A consistent day = at least this many check-ins (decided 15 November 2026).
 export const CONSISTENT_DAY_CHECKINS = 3;
 
-// The four emotion groups, with their 10 emotions (from the
+// The four emotion groups, with 9 emotions each (one 3 x 3 grid; decided 20 November 2026) (from the
 // "Emotion x Spiritual/ Mindful Practice Map" in Notion).
 // Pastel bubble colours decided on 20 November 2026 (labels in #1B2A3D).
 export const GROUPS = [
@@ -108,7 +108,7 @@ export const GROUPS = [
     color: '#E8F6EC',
     emotions: [
       'Joyful', 'Excited', 'Enthusiastic', 'Inspired', 'Passionate',
-      'Proud', 'Confident', 'Energised', 'Eager', 'Elated',
+      'Proud', 'Confident', 'Energised', 'Eager',
     ],
     explanation:
       '[Placeholder] Strong positive emotions carry a lot of energy. This is a good moment to let the feeling settle in your body and make it last.',
@@ -120,7 +120,7 @@ export const GROUPS = [
     color: '#FFFBEB',
     emotions: [
       'Calm', 'Peaceful', 'Content', 'Relaxed', 'Grateful',
-      'Serene', 'At ease', 'Secure', 'Fulfilled', 'Loving',
+      'Serene', 'At ease', 'Secure', 'Fulfilled',
     ],
     explanation:
       '[Placeholder] You feel calm and steady. A short practice now helps you find this state again later.',
@@ -132,7 +132,7 @@ export const GROUPS = [
     color: '#F0F7FC',
     emotions: [
       'Sad', 'Tired', 'Bored', 'Lonely', 'Disappointed',
-      'Discouraged', 'Empty', 'Numb', 'Drained', 'Powerless',
+      'Discouraged', 'Empty', 'Numb', 'Drained',
     ],
     explanation:
       "[Placeholder] Low emotions are part of life. You don't need to change them right away: noticing them is already a step.",
@@ -144,7 +144,7 @@ export const GROUPS = [
     color: '#FBEEEB',
     emotions: [
       'Angry', 'Anxious', 'Stressed', 'Frustrated', 'Overwhelmed',
-      'Afraid', 'Irritated', 'Restless', 'Jealous', 'Panicked',
+      'Afraid', 'Irritated', 'Restless', 'Jealous',
     ],
     explanation:
       '[Placeholder] Strong emotions show up in the body first. Calming the breath can help before anything else.',

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Spiritual app (prototype)",
     "slug": "spiritual-app",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
