@@ -1,4 +1,4 @@
-// Spiritual app: feasibility prototype, version 2 (flow of 26 October 2026).
+// Spiritual app: prototype, version 3 (flow of 20 November 2026).
 // Screen numbers (S0, S1...) match the FigJam user flow and its Notion text version.
 // Data stays on the phone (AsyncStorage). Content lives in src/content.js.
 
@@ -6,17 +6,21 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  Vibration,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  CONFIG,
+  CONSISTENT_DAY_CHECKINS,
   DEFAULT_MINUTES,
   GROUPS,
   TECHNIQUES,
@@ -26,12 +30,15 @@ import {
 
 // ---------- Notifications setup ----------
 
+// Follows the "Sound" setting (updated by the app when settings change).
+let playSound = true;
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldShowBanner: true,
     shouldShowList: true,
-    shouldPlaySound: true,
+    shouldPlaySound: playSound,
     shouldSetBadge: false,
   }),
 });
@@ -45,21 +52,112 @@ async function hasPermission() {
   return status === 'granted';
 }
 
-// Keeps only the notifications this version needs: the one saved reminder (S9a)
-// and a timer-end alert. Everything else is cancelled, including the daily
-// "moments of the day" reminders from prototype v1.
+// Notification kinds used by this version:
+// 'random' (random reminders), 'checkin' (the one-off reminder, S9a), 'timerEnd'.
+// Anything else (for example the daily reminders from prototype v1) is cancelled at launch.
 async function cancelOldNotifications(keepReminderId) {
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     await Promise.all(
       scheduled
-        .filter((n) => n.identifier !== keepReminderId && n.content?.data?.kind !== 'timerEnd')
+        .filter((n) => {
+          const kind = n.content?.data?.kind;
+          if (kind === 'timerEnd' || kind === 'random') return false;
+          return n.identifier !== keepReminderId;
+        })
         .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
     );
   } catch (e) {
     // Ignore for the prototype.
   }
 }
+
+// ---------- Random reminders (⚙️) ----------
+
+// iOS keeps at most 64 scheduled notifications per app. Random reminders use up to
+// 50, leaving room for the one-off reminder and a timer alert.
+const MAX_RANDOM = 50;
+const MAX_DAYS_AHEAD = 7;
+const MIN_LEAD_MS = 10 * 60 * 1000; // never less than 10 minutes from now
+
+// Returns the planned times: within each day, the active hours (quiet hours end → quiet
+// hours start) are cut into periods of `frequencyHours`, with one random time per period.
+function planRandomTimes({ frequencyHours, quietStart, quietEnd }, from = new Date()) {
+  const times = [];
+  const earliest = from.getTime() + MIN_LEAD_MS;
+  for (let d = 0; d < MAX_DAYS_AHEAD && times.length < MAX_RANDOM; d += 1) {
+    const day = new Date(from.getFullYear(), from.getMonth(), from.getDate() + d);
+    let start = new Date(day);
+    start.setHours(quietEnd, 0, 0, 0);
+    const end = new Date(day);
+    end.setHours(quietStart, 0, 0, 0);
+    while (start < end && times.length < MAX_RANDOM) {
+      const periodEnd = new Date(Math.min(start.getTime() + frequencyHours * 3600 * 1000, end.getTime()));
+      const lo = Math.max(start.getTime(), earliest);
+      const hi = periodEnd.getTime();
+      if (hi - lo > 5 * 60 * 1000) {
+        times.push(new Date(lo + Math.random() * (hi - lo)));
+      }
+      start = periodEnd;
+    }
+  }
+  return times;
+}
+
+// Cancels the planned random reminders and plans them again from now.
+// Returns the planned times (ISO strings) so Home can show the next one.
+async function planRandomReminders(settings) {
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      scheduled
+        .filter((n) => n.content?.data?.kind === 'random')
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier))
+    );
+    if (!settings.notificationsOn || !(await hasPermission())) return [];
+    const times = planRandomTimes(settings);
+    for (const at of times) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: TEXTS.reminderNotificationTitle,
+          body: TEXTS.reminderNotificationBody,
+          sound: settings.sound,
+          data: { kind: 'random' },
+        },
+        trigger: { type: DATE_TRIGGER, date: at },
+      });
+    }
+    return times.map((t) => t.toISOString());
+  } catch (e) {
+    return [];
+  }
+}
+
+// ---------- Analytics (⚙️, anonymous) ----------
+
+// Sends anonymous usage events to PostHog through its public capture endpoint.
+// Never sends the content of a check-in (no state, emotion or technique).
+// Does nothing while CONFIG.posthogKey is empty.
+async function track(distinctId, event, properties = {}) {
+  if (!CONFIG.posthogKey || !distinctId) return;
+  try {
+    await fetch(`${CONFIG.posthogHost}/capture/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: CONFIG.posthogKey,
+        event,
+        distinct_id: distinctId,
+        properties: { ...properties, app_version: '0.3.0' },
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {
+    // No network: the event is dropped (fine for the beta).
+  }
+}
+
+const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 async function askPermission() {
   const current = await Notifications.getPermissionsAsync();
@@ -72,7 +170,18 @@ async function askPermission() {
 // ---------- Storage ----------
 
 const KEYS = { settings: 'settings_v2', checkins: 'checkins_v2' };
-const DEFAULT_SETTINGS = { onboarded: false, notificationsOn: true, reminder: null };
+const DEFAULT_SETTINGS = {
+  onboarded: false,
+  notificationsOn: true,
+  reminder: null, // one-off reminder (S9a): { id, at }
+  frequencyHours: 3,
+  quietStart: 22,
+  quietEnd: 8,
+  sound: true,
+  vibration: true,
+  randomPlan: [], // planned random reminder times (ISO), for "Next reminder" on Home
+  analyticsId: null, // random anonymous ID, not linked to the person
+};
 
 async function loadJSON(key, fallback) {
   try {
@@ -312,6 +421,23 @@ function Stepper({ label, value, onMinus, onPlus }) {
   );
 }
 
+// A row of options where one is selected (frequency, quiet hours).
+function Choice({ options, value, onChange }) {
+  return (
+    <View style={styles.choiceRow}>
+      {options.map((o) => (
+        <Pressable
+          key={String(o.value)}
+          onPress={() => onChange(o.value)}
+          style={[styles.choice, value === o.value && styles.choiceSelected]}
+        >
+          <Text style={[styles.choiceText, value === o.value && styles.choiceTextSelected]}>{o.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 // S9a: month calendar to pick the reminder day. Past days cannot be picked.
 function DayCalendar({ value, onPick }) {
   const [month, setMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
@@ -423,6 +549,7 @@ function MoodTracker({ checkins }) {
           const entries = byDay[k] || [];
           const last = entries.length ? entries[entries.length - 1] : null;
           const color = last ? groupById(last.group)?.color : 'transparent';
+          const consistent = entries.length >= CONSISTENT_DAY_CHECKINS;
           return (
             <Pressable key={k} onPress={() => setSelected(k)} style={styles.calendarCell}>
               <View
@@ -434,11 +561,16 @@ function MoodTracker({ checkins }) {
               >
                 <Text style={styles.calendarDay}>{date.getDate()}</Text>
               </View>
+              {consistent ? <Text style={styles.consistentMark}>✓</Text> : null}
             </Pressable>
           );
         })}
       </View>
-      <Text style={[styles.subtitle, { marginTop: 16 }]}>{selected}</Text>
+      <Text style={styles.small}>✓ {TEXTS.consistentDay}</Text>
+      <Text style={[styles.subtitle, { marginTop: 16 }]}>
+        {selected} · {dayEntries.length} check-in{dayEntries.length === 1 ? '' : 's'}
+        {dayEntries.length >= CONSISTENT_DAY_CHECKINS ? ' ✓' : ''}
+      </Text>
       {dayEntries.length === 0 ? (
         <Text style={styles.body}>No check-in on this day.</Text>
       ) : (
@@ -482,29 +614,46 @@ export default function App() {
   const [now, setNow] = useState(Date.now());
 
   const checkinsRef = useRef([]);
+  const settingsRef = useRef(DEFAULT_SETTINGS);
   const handledResponses = useRef(new Set());
 
-  // ----- Load saved data -----
+  const t = (event, properties) => track(settingsRef.current.analyticsId, event, properties);
+
+  // ----- Load saved data, clean up and top up the random reminders -----
   useEffect(() => {
     (async () => {
-      const s = await loadJSON(KEYS.settings, DEFAULT_SETTINGS);
+      const s = { ...DEFAULT_SETTINGS, ...(await loadJSON(KEYS.settings, DEFAULT_SETTINGS)) };
       if (s.reminder && new Date(s.reminder.at).getTime() < Date.now()) s.reminder = null;
+      if (!s.analyticsId) s.analyticsId = newId();
+      playSound = s.sound;
       await cancelOldNotifications(s.reminder?.id);
+      if (s.onboarded) s.randomPlan = await planRandomReminders(s);
+      settingsRef.current = s;
+      setSettings(s);
+      saveJSON(KEYS.settings, s);
       const c = await loadJSON(KEYS.checkins, []);
-      setSettings({ ...DEFAULT_SETTINGS, ...s });
       setCheckins(c);
       checkinsRef.current = c;
       setScreen(s.onboarded ? 'home' : 'welcome');
       setLoaded(true);
+      track(s.analyticsId, 'app_opened');
     })();
   }, []);
 
   const updateSettings = (patch) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
-      saveJSON(KEYS.settings, next);
-      return next;
-    });
+    const next = { ...settingsRef.current, ...patch };
+    settingsRef.current = next;
+    playSound = next.sound;
+    setSettings(next);
+    saveJSON(KEYS.settings, next);
+    return next;
+  };
+
+  // Save settings, then plan the random reminders again (frequency, quiet hours, on/off).
+  const updateAndReplan = async (patch) => {
+    const next = updateSettings(patch);
+    const plan = await planRandomReminders(next);
+    updateSettings({ randomPlan: plan });
   };
 
   // ----- Check-in records (background steps ⚙️) -----
@@ -529,15 +678,17 @@ export default function App() {
     if (handledResponses.current.has(id)) return;
     handledResponses.current.add(id);
     const data = response.notification.request.content.data || {};
-    if (data.kind === 'checkin') {
-      // E3 Tapping the notification → S2
-      updateSettings({ reminder: null });
-      setSession({});
+    if (data.kind === 'checkin' || data.kind === 'random') {
+      // E3 Tapping a reminder → S2
+      if (data.kind === 'checkin') updateSettings({ reminder: null });
+      const source = data.kind === 'random' ? 'random_reminder' : 'oneoff_reminder';
+      t('reminder_opened', { type: data.kind === 'random' ? 'random' : 'oneoff' });
+      setSession({ source });
       setScreen('checkin');
     } else if (data.kind === 'timerEnd' && data.recordId) {
       const record = checkinsRef.current.find((c) => c.id === data.recordId);
       if (record && record.completed == null) {
-        finishTimer(record.id, record.timerMinutes || 0);
+        finishTimer(record.id, record.timerMinutes || 0, false);
       }
     }
   };
@@ -560,7 +711,7 @@ export default function App() {
 
   useEffect(() => {
     if (running && now >= session.timerEndAt) {
-      finishTimer(session.recordId, session.timerMinutes);
+      finishTimer(session.recordId, session.timerMinutes, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, running]);
@@ -574,6 +725,7 @@ export default function App() {
         content: {
           title: TEXTS.timerNotificationTitle,
           body: TEXTS.timerNotificationBody,
+          sound: settings.sound,
           data: { kind: 'timerEnd', recordId: session.recordId },
         },
         trigger: { type: INTERVAL_TRIGGER, seconds: Math.max(1, minutes * 60), repeats: false },
@@ -584,8 +736,10 @@ export default function App() {
     setNow(Date.now());
   };
 
-  // ⚙️ Timer ends → S15
-  const finishTimer = (recordId, minutes) => {
+  // ⚙️ Timer ends: soft vibration if the app is open (and Vibration is on) → S15
+  const finishTimer = (recordId, minutes, appOpen) => {
+    if (appOpen && settingsRef.current.vibration) Vibration.vibrate(400);
+    t('practice_done', { minutes, path: 'yes' });
     updateRecord(recordId, { completed: true, timeSpentSec: minutes * 60 });
     const record = checkinsRef.current.find((c) => c.id === recordId) || {};
     setSession((s) => ({
@@ -604,6 +758,7 @@ export default function App() {
       await Notifications.cancelScheduledNotificationAsync(session.timerNotificationId);
     }
     const spent = session.timerStartAt ? (Date.now() - session.timerStartAt) / 1000 : 0;
+    t('practice_stopped', { minutes_spent: Math.round(spent / 60) });
     updateRecord(session.recordId, { completed: false, timeSpentSec: Math.round(spent) });
     setSession({});
     setScreen('home');
@@ -655,14 +810,23 @@ export default function App() {
       content: {
         title: TEXTS.reminderNotificationTitle,
         body: TEXTS.reminderNotificationBody,
+        sound: settings.sound,
         data: { kind: 'checkin' },
       },
       trigger: testInSeconds
         ? { type: INTERVAL_TRIGGER, seconds: testInSeconds, repeats: false }
         : { type: DATE_TRIGGER, date: at },
     });
+    t('oneoff_reminder_set', { test: Boolean(testInSeconds) });
+    const wasOff = !settingsRef.current.notificationsOn;
     updateSettings({ reminder: { id, at: at.toISOString() }, notificationsOn: true });
+    if (wasOff) await updateAndReplan({});
     setScreen(reminderReturn);
+  };
+
+  const removeReminder = async () => {
+    if (settings.reminder?.id) await Notifications.cancelScheduledNotificationAsync(settings.reminder.id);
+    updateSettings({ reminder: null });
   };
 
   // ----- Settings (S12) -----
@@ -674,10 +838,23 @@ export default function App() {
         setMessage(TEXTS.notificationsBlocked);
         return;
       }
-      updateSettings({ notificationsOn: true });
+      await updateAndReplan({ notificationsOn: true });
     } else {
       await Notifications.cancelAllScheduledNotificationsAsync();
-      updateSettings({ notificationsOn: false, reminder: null });
+      updateSettings({ notificationsOn: false, reminder: null, randomPlan: [] });
+    }
+  };
+
+  const openFeedback = async () => {
+    t('feedback_opened');
+    if (!CONFIG.feedbackUrl) {
+      setMessage(TEXTS.feedbackNotSet);
+      return;
+    }
+    try {
+      await Linking.openURL(CONFIG.feedbackUrl);
+    } catch (e) {
+      setMessage(TEXTS.feedbackNotSet);
     }
   };
 
@@ -686,9 +863,20 @@ export default function App() {
     await AsyncStorage.multiRemove([KEYS.settings, KEYS.checkins]);
     checkinsRef.current = [];
     setCheckins([]);
-    setSettings(DEFAULT_SETTINGS);
+    settingsRef.current = { ...DEFAULT_SETTINGS, analyticsId: newId() };
+    setSettings(settingsRef.current);
     setSession({});
+    setMessage('');
     setScreen('welcome');
+  };
+
+  // Next reminder shown on Home: the earliest planned random or one-off reminder.
+  const nextReminderAt = () => {
+    const nowMs = Date.now();
+    const times = [...(settings.randomPlan || [])];
+    if (settings.reminder) times.push(settings.reminder.at);
+    const future = times.filter((iso) => new Date(iso).getTime() > nowMs).sort();
+    return future.length ? future[0] : null;
   };
 
   const goHome = () => {
@@ -703,19 +891,23 @@ export default function App() {
   let body = null;
 
   switch (screen) {
-    // S0 Welcome message and short explanation
+    // S0 Welcome and short presentation of the method
     case 'welcome':
       body = (
         <Screen>
           <BreathingBubble />
           <Text style={styles.title}>{TEXTS.welcomeTitle}</Text>
           <Text style={styles.body}>{TEXTS.welcomeBody}</Text>
+          <Text style={styles.subtitle}>{TEXTS.methodTitle}</Text>
+          {TEXTS.methodSteps.map((step, i) => (
+            <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
+          ))}
           <Button label={TEXTS.welcomeButton} onPress={() => setScreen('permission')} />
         </Screen>
       );
       break;
 
-    // S0a Notification permission request → S2
+    // S0a Notification permission request → S0b
     case 'permission':
       body = (
         <Screen>
@@ -725,15 +917,42 @@ export default function App() {
             label={TEXTS.permissionAllow}
             onPress={async () => {
               const ok = await askPermission();
-              updateSettings({ onboarded: true, notificationsOn: ok });
-              setScreen('checkin');
+              updateSettings({ notificationsOn: ok });
+              setScreen('frequency');
             }}
           />
           <Button
             label={TEXTS.permissionLater}
             kind="secondary"
             onPress={() => {
-              updateSettings({ onboarded: true, notificationsOn: false });
+              updateSettings({ notificationsOn: false });
+              setScreen('frequency');
+            }}
+          />
+        </Screen>
+      );
+      break;
+
+    // S0b Reminder frequency → ⚙️ plan random reminders → S2
+    case 'frequency':
+      body = (
+        <Screen>
+          <Text style={styles.title}>{TEXTS.frequencyTitle}</Text>
+          <Text style={styles.body}>{TEXTS.frequencyBody}</Text>
+          <Choice
+            options={TEXTS.frequencyOptions.map((o) => ({ value: o.hours, label: o.label }))}
+            value={settings.frequencyHours}
+            onChange={(hours) => updateSettings({ frequencyHours: hours })}
+          />
+          <Button
+            label={TEXTS.frequencyContinue}
+            onPress={async () => {
+              await updateAndReplan({ onboarded: true });
+              t('onboarding_done', {
+                frequency_hours: settingsRef.current.frequencyHours,
+                notifications: settingsRef.current.notificationsOn,
+              });
+              setSession({ source: 'onboarding' });
               setScreen('checkin');
             }}
           />
@@ -753,13 +972,13 @@ export default function App() {
               <Text style={styles.link}>Settings</Text>
             </Pressable>
           </View>
-          <Pressable onPress={() => { setSession({}); setScreen('checkin'); }}>
+          <Pressable onPress={() => { setSession({ source: 'home' }); setScreen('checkin'); }}>
             <BreathingBubble size={180} />
           </Pressable>
           <Text style={[styles.body, { textAlign: 'center' }]}>{TEXTS.homeTap}</Text>
-          {settings.reminder ? (
+          {nextReminderAt() ? (
             <Text style={[styles.small, { textAlign: 'center', marginTop: 12 }]}>
-              Next reminder: {formatReminder(settings.reminder.at)}
+              Next reminder: {formatReminder(nextReminderAt())}
             </Text>
           ) : null}
         </Screen>
@@ -773,7 +992,8 @@ export default function App() {
           <StateQuestion
             question={TEXTS.checkInQuestion}
             onPick={(groupId) => {
-              setSession({ group: groupId, startedAt: new Date().toISOString() });
+              t('checkin_started', { source: session.source || 'home' });
+              setSession((s) => ({ source: s.source || 'home', group: groupId, startedAt: new Date().toISOString() }));
               setScreen('specify');
             }}
           />
@@ -814,10 +1034,12 @@ export default function App() {
             onPress={() => {
               // S6 + ⚙️ Save the check-in (date/time, emotion group, emotion)
               const quick = pickRandom(TECHNIQUES[session.group].under1, 1)[0];
-              const id = `${Date.now()}`;
+              const id = newId();
+              t('quick_practice_shown', { source: session.source });
               createRecord({
                 id,
                 createdAt: new Date().toISOString(),
+                source: session.source,
                 path: 'A',
                 group: session.group,
                 emotion: session.emotion || null,
@@ -892,11 +1114,13 @@ export default function App() {
               style={styles.card}
               onPress={() => {
                 // ⚙️ Save the check-in before the practice
-                const id = `${Date.now()}`;
+                const id = newId();
                 const minutes = DEFAULT_MINUTES[session.timeChoice];
+                t('practice_chosen', { source: session.source, time_choice: session.timeChoice });
                 createRecord({
                   id,
                   createdAt: new Date().toISOString(),
+                  source: session.source,
                   path: 'B',
                   group: session.group,
                   emotion: session.emotion || null,
@@ -957,6 +1181,16 @@ export default function App() {
               setScreen('afterSpecify');
             }}
           />
+          <Button
+            label={TEXTS.afterSkip}
+            kind="secondary"
+            onPress={() => {
+              // Skip: the practice stays saved as done, without the after state → S17
+              updateRecord(session.recordId, { afterSkipped: true });
+              t('after_check_skipped');
+              setScreen('thanks');
+            }}
+          />
         </Screen>
       );
       break;
@@ -970,6 +1204,7 @@ export default function App() {
             onPick={(emotion) => {
               // ⚙️ Save the check-in after the practice
               updateRecord(session.recordId, { afterGroup: session.afterGroup, afterEmotion: emotion });
+              t('after_check_done');
               setScreen('thanks');
             }}
           />
@@ -1024,16 +1259,59 @@ export default function App() {
       body = (
         <Screen onBack={goHome}>
           <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>Reminder</Text>
-          <Text style={styles.body}>
-            {settings.reminder ? formatReminder(settings.reminder.at) : 'No reminder set.'}
-          </Text>
-          <Button label="Change reminder time" kind="secondary" onPress={() => openReminder('settings')} />
+
           <View style={styles.settingRow}>
-            <Text style={styles.body}>Notifications</Text>
+            <Text style={styles.subtitle}>Notifications</Text>
             <Switch value={settings.notificationsOn} onValueChange={toggleNotifications} />
           </View>
+
+          <Text style={styles.subtitle}>Reminder frequency</Text>
+          <Choice
+            options={TEXTS.frequencyOptions.map((o) => ({ value: o.hours, label: o.label }))}
+            value={settings.frequencyHours}
+            onChange={(hours) => updateAndReplan({ frequencyHours: hours })}
+          />
+          <Text style={styles.small}>At a random time within each period.</Text>
+
+          <Text style={[styles.subtitle, { marginTop: 16 }]}>Quiet hours</Text>
+          <Text style={styles.small}>No reminders between these times.</Text>
+          <Stepper
+            label="from"
+            value={`${pad(settings.quietStart)}:00`}
+            onMinus={() => updateAndReplan({ quietStart: Math.max(18, settings.quietStart - 1) })}
+            onPlus={() => updateAndReplan({ quietStart: Math.min(23, settings.quietStart + 1) })}
+          />
+          <Stepper
+            label="to"
+            value={`${pad(settings.quietEnd)}:00`}
+            onMinus={() => updateAndReplan({ quietEnd: Math.max(5, settings.quietEnd - 1) })}
+            onPlus={() => updateAndReplan({ quietEnd: Math.min(11, settings.quietEnd + 1) })}
+          />
+
+          <View style={styles.settingRow}>
+            <Text style={styles.body}>Sound</Text>
+            <Switch value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
+          </View>
+          <View style={styles.settingRow}>
+            <Text style={styles.body}>Vibration at the end of the timer</Text>
+            <Switch value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
+          </View>
+
+          <Text style={[styles.subtitle, { marginTop: 16 }]}>One-off reminder</Text>
+          <Text style={styles.body}>
+            {settings.reminder ? formatReminder(settings.reminder.at) : 'None set.'}
+          </Text>
+          <Button
+            label={settings.reminder ? 'Change one-off reminder' : 'Set a one-off reminder'}
+            kind="secondary"
+            onPress={() => openReminder('settings')}
+          />
+          {settings.reminder ? <Button label="Remove one-off reminder" kind="link" onPress={removeReminder} /> : null}
+
+          <Text style={[styles.subtitle, { marginTop: 16 }]}>Beta</Text>
+          <Button label={TEXTS.feedbackButton} onPress={openFeedback} />
           {message ? <Text style={styles.warning}>{message}</Text> : null}
+
           <Text style={[styles.subtitle, { marginTop: 32 }]}>For testing</Text>
           <Button label="Reset the app (deletes all data)" kind="link" onPress={resetApp} />
         </Screen>
@@ -1118,4 +1396,17 @@ const styles = StyleSheet.create({
   calendarDay: { color: '#1B2A3D' },
   entry: { backgroundColor: '#F0F7FC', borderRadius: 12, padding: 12, marginVertical: 4 },
   entryTitle: { fontSize: 15, fontWeight: '600', color: '#1B2A3D' },
+  consistentMark: { position: 'absolute', bottom: 0, fontSize: 11, color: '#1E3A5F', fontWeight: '700' },
+  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
+  choice: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#1E3A5F',
+    backgroundColor: 'transparent',
+  },
+  choiceSelected: { backgroundColor: '#C9EBFF', borderColor: '#C9EBFF' },
+  choiceText: { color: '#1E3A5F', fontSize: 15 },
+  choiceTextSelected: { color: '#10243A', fontWeight: '600' },
 });

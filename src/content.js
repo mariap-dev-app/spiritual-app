@@ -2,22 +2,49 @@
 // (or be translated later) without touching the screens in App.js.
 // Lines marked [Placeholder] are temporary and need Maria's content.
 
+// Settings for outside services. Leave a value empty to switch the service off.
+export const CONFIG = {
+  // PostHog project API key (starts with "phc_"). Empty = no analytics sent.
+  posthogKey: '',
+  posthogHost: 'https://eu.i.posthog.com',
+  // Link to the beta feedback form (for example a Tally or Google Form). Empty = button shows a message.
+  feedbackUrl: '',
+};
+
 export const TEXTS = {
   welcomeTitle: 'Welcome',
   welcomeBody:
-    '[Placeholder] This app helps you check in with how you feel, a few times a day, and suggests a short practice for the moment.',
+    '[Placeholder] This app helps you stay consistent with your practice.',
+  methodTitle: 'How it works',
+  methodSteps: [
+    '[Placeholder] A few times a day, a reminder invites you to take a breath and notice how you feel.',
+    '[Placeholder] You choose the bubble that matches your state.',
+    '[Placeholder] The app suggests a short practice for this moment, with a timer.',
+    '[Placeholder] You can also check in any time by tapping the bubble on the home screen.',
+  ],
   welcomeButton: 'Continue',
 
   permissionTitle: 'Reminders',
   permissionBody:
-    'The app can remind you to check in at a time you choose. To do this, it needs permission to send notifications. You can change this later in Settings.',
+    'The app reminds you to check in a few times a day. To do this, it needs permission to send notifications. You can change this later in Settings.',
   permissionAllow: 'Allow notifications',
   permissionLater: 'Not now',
 
+  frequencyTitle: 'How often should we remind you?',
+  frequencyBody:
+    'Each reminder comes at a random time within the period, never during quiet hours (22:00 to 08:00 by default). You can change this later in Settings.',
+  frequencyOptions: [
+    { hours: 3, label: 'Every 3 hours' },
+    { hours: 2, label: 'Every 2 hours' },
+    { hours: 1, label: 'Every hour' },
+  ],
+  frequencyContinue: 'Continue',
+
   homeTap: 'Tap the bubble to check in',
 
-  checkInQuestion: 'Breathe in. How are you feeling?',
-  afterQuestion: 'Breathe in. How are you feeling now?',
+  checkInQuestion: 'Take a breath in! How are you feeling?',
+  afterQuestion: 'Take a breath in! How are you feeling now?',
+  afterSkip: 'Skip',
 
   specifyQuestion: 'Do you want to specify?',
   specifySkip: 'Skip',
@@ -42,18 +69,26 @@ export const TEXTS = {
   timerStart: 'Start',
   timerStop: 'Stop',
 
-  reminderTitle: 'Set up a reminder',
+  reminderTitle: 'Set up a one-off reminder',
   reminderSave: 'Save reminder',
   reminderTest: 'Test: remind me in 10 seconds',
   reminderCancel: 'Cancel',
   reminderPast: 'Choose a date and time in the future.',
   reminderNotificationTitle: 'Time to check in',
-  reminderNotificationBody: 'Breathe in. How are you feeling?',
+  reminderNotificationBody: 'Take a breath in! How are you feeling?',
   timerNotificationTitle: 'Your practice is over',
   timerNotificationBody: 'Tap to tell how you are feeling now.',
   notificationsBlocked:
     'Notifications are turned off for this app. You can turn them on in the iPhone Settings app, under Notifications.',
+
+  feedbackButton: 'Send feedback',
+  feedbackNotSet: 'The feedback form is not set up yet.',
+
+  consistentDay: 'Consistent day (3 or more check-ins)',
 };
+
+// A consistent day = at least this many check-ins (decided 15 November 2026).
+export const CONSISTENT_DAY_CHECKINS = 3;
 
 // The four emotion groups, with their 10 emotions (from the
 // "Emotion x Spiritual/ Mindful Practice Map" in Notion).
