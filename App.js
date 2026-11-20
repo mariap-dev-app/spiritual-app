@@ -150,7 +150,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.3.0' },
+        properties: { ...properties, app_version: '0.3.1' },
         timestamp: new Date().toISOString(),
       }),
     });
