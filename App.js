@@ -1,4 +1,4 @@
-// Spiritual app: prototype, version 3.2 (flow, design decisions and Round 3 feedback of 20 November 2026).
+// Mousse (working name): prototype, version 4 (final content of 22 Nov and berry graphic chart of 25 Nov 2026).
 // Screen numbers (S0, S1...) match the FigJam user flow and its Notion text version.
 // Data stays on the phone (AsyncStorage). Content lives in src/content.js.
 
@@ -15,9 +15,9 @@ import {
   Text,
   Vibration,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -26,7 +26,6 @@ import {
   DEFAULT_MINUTES,
   GROUPS,
   TECHNIQUES,
-  TECHNIQUE_STEPS_PLACEHOLDER,
   TEXTS,
 } from './src/content';
 
@@ -150,7 +149,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.3.2' },
+        properties: { ...properties, app_version: '0.4.0' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -234,105 +233,112 @@ function formatCountdown(seconds) {
 
 // ---------- Small UI pieces ----------
 
+// Buttons (graphic chart 25 Nov 2026): primary = berry gradient pill, secondary = outlined
+// pill, link = accent text.
 function Button({ label, onPress, kind = 'primary', disabled }) {
+  if (kind === 'primary') {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        style={({ pressed }) => [styles.buttonWrap, (pressed || disabled) && { opacity: 0.7 }]}
+      >
+        <LinearGradient colors={G.cta} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={styles.button}>
+          <Text style={styles.buttonText}>{label}</Text>
+        </LinearGradient>
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
-        styles.button,
-        kind === 'secondary' && styles.buttonSecondary,
-        kind === 'link' && styles.buttonLink,
+        kind === 'secondary' ? styles.buttonSecondary : styles.buttonLink,
         (pressed || disabled) && { opacity: 0.6 },
       ]}
     >
-      <Text
-        style={[
-          styles.buttonText,
-          kind === 'secondary' && styles.buttonTextSecondary,
-          kind === 'link' && styles.buttonTextLink,
-        ]}
-      >
-        {label}
-      </Text>
+      <Text style={kind === 'secondary' ? styles.buttonTextSecondary : styles.buttonTextLink}>{label}</Text>
     </Pressable>
   );
 }
 
-// Mood bubbles: flat, perfectly round, pastel colour of the emotion group
-// (design decision of 20 November 2026), no ring, no shadow.
-function Bubble({ label, color, size = 120, onPress }) {
+// Title: first phrase in the serif heading style; a second phrase (after \n) on its own
+// line, smaller, in the body font (graphic chart 25 Nov 2026).
+function Title({ children, style }) {
+  const [first, ...rest] = String(children).split('\n');
+  return (
+    <Text style={[styles.title, style]}>
+      {first}
+      {rest.length ? <Text style={styles.titleSmall}>{`\n${rest.join('\n')}`}</Text> : null}
+    </Text>
+  );
+}
+
+// Mood bubbles: round, berry gradient of the emotion group, soft shadow, light label.
+function Bubble({ label, colors, size = 130, fontSize = 16, onPress }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.bubble,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
-        pressed && { borderWidth: 2, borderColor: C.accent },
+        styles.bubbleShadow,
+        { width: size, height: size, borderRadius: size / 2 },
+        pressed && { transform: [{ scale: 0.96 }] },
       ]}
     >
-      <Text style={styles.bubbleText}>{label}</Text>
+      <LinearGradient
+        colors={colors}
+        start={{ x: 0.25, y: 0.2 }}
+        end={{ x: 0.85, y: 1 }}
+        style={[styles.bubble, { borderRadius: size / 2 }]}
+      >
+        <Text style={[styles.bubbleText, { fontSize, lineHeight: Math.round(fontSize * 1.3) }]}>{label}</Text>
+      </LinearGradient>
     </Pressable>
   );
 }
 
-// Breathing bubble, as on the preview's Session screen: a sky-blue circle inside a
-// pale-blue ring with a thin border. The inner circle slowly expands and retracts
-// (one breath = 8 seconds); the ring stays still.
-function BreathingBubble({ color = C.primary, size = 140 }) {
-  const scale = useRef(new Animated.Value(0.8)).current;
+// Main bubble: 220 px berry circle, no ring. It breathes: grows by 10 % on the breath in
+// (4 s) and returns on the breath out (6 s). Still when "Reduce motion" is on.
+function BreathingBubble({ size = 220 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const still = useReduceMotion();
   useEffect(() => {
+    if (still) return undefined;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(scale, { toValue: 1.15, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 0.8, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1.1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
-  }, [scale]);
-  const ring = Math.round(size * 1.57); // 220 / 140 on the preview
+  }, [scale, still]);
   return (
-    <View
-      style={{
-        width: ring,
-        height: ring,
-        borderRadius: ring / 2,
-        backgroundColor: C.surface,
-        borderWidth: 1,
-        borderColor: C.divider,
-        alignItems: 'center',
-        justifyContent: 'center',
-        alignSelf: 'center',
-        marginVertical: 24,
-      }}
+    <Animated.View
+      style={[
+        styles.bubbleShadow,
+        { width: size, height: size, borderRadius: size / 2, alignSelf: 'center', marginVertical: 24 },
+        { transform: [{ scale }] },
+      ]}
     >
-      <Animated.View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: color,
-          transform: [{ scale }],
-        }}
+      <LinearGradient
+        colors={G.mainBubble}
+        start={{ x: 0.25, y: 0.2 }}
+        end={{ x: 0.85, y: 1 }}
+        style={{ flex: 1, borderRadius: size / 2 }}
       />
-    </View>
+    </Animated.View>
   );
 }
 
-// Decorative background (design decision of 20 November 2026): thin outlined circles
-// of different sizes that rise from the bottom to the top (10 to 18 seconds per rise),
-// behind the content.
-// Positions are fractions of the screen; static when "Reduce motion" is on.
-const BG_CIRCLES = [
-  { x: 0.05, size: 140, duration: 16000, delay: 0 },
-  { x: 0.7, size: 60, duration: 12000, delay: 0.3 },
-  { x: 0.4, size: 24, duration: 10000, delay: 0.6 },
-  { x: 0.85, size: 110, duration: 17000, delay: 0.15 },
-  { x: 0.15, size: 40, duration: 13000, delay: 0.8 },
-  { x: 0.55, size: 180, duration: 18000, delay: 0.45 },
-  { x: 0.3, size: 16, duration: 11000, delay: 0.2 },
-  { x: 0.9, size: 30, duration: 14000, delay: 0.7 },
+// Background (graphic chart 25 Nov 2026): purple-to-chocolate vertical gradient, with four
+// soft berry blobs that float up and down slowly (18 s). Still when "Reduce motion" is on.
+const BG_BLOBS = [
+  { left: -70, top: 90, width: 230, height: 200, color: 'rgba(201,74,110,0.20)', delay: 0 },
+  { right: -60, top: 330, width: 200, height: 190, color: 'rgba(201,74,110,0.16)', delay: 6000 },
+  { left: -30, top: 520, width: 170, height: 150, color: 'rgba(201,74,110,0.14)', delay: 10000 },
+  { right: -20, top: 70, width: 120, height: 110, color: 'rgba(239,167,186,0.10)', delay: 3000 },
 ];
 
 function useReduceMotion() {
@@ -349,61 +355,52 @@ function useReduceMotion() {
   return reduce;
 }
 
-function FloatingCircle({ x, size, duration, delay, width, height, still }) {
-  const progress = useRef(new Animated.Value(delay)).current;
+function Blob({ left, right, top, width, height, color, delay, still }) {
+  const y = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (still) return undefined;
-    // First run starts part-way up (delay), then loops from the bottom.
-    const first = Animated.timing(progress, {
-      toValue: 1, duration: duration * (1 - delay), easing: Easing.linear, useNativeDriver: true,
-    });
     const loop = Animated.loop(
-      Animated.timing(progress, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })
+      Animated.sequence([
+        Animated.timing(y, { toValue: -22, duration: 9000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(y, { toValue: 0, duration: 9000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
     );
-    let stopped = false;
-    first.start(({ finished }) => {
-      if (finished && !stopped) {
-        progress.setValue(0);
-        loop.start();
-      }
-    });
+    const timer = setTimeout(() => loop.start(), delay % 9000);
     return () => {
-      stopped = true;
-      first.stop();
+      clearTimeout(timer);
       loop.stop();
     };
-  }, [still, progress, duration, delay]);
-  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [height + size, -size] });
+  }, [still, y, delay]);
   return (
     <Animated.View
       style={{
         position: 'absolute',
-        left: x * width - size / 2,
-        top: still ? (1 - delay) * height : 0,
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        borderWidth: 1,
-        borderColor: C.divider,
-        transform: still ? [] : [{ translateY }],
+        left,
+        right,
+        top,
+        width,
+        height,
+        borderRadius: Math.max(width, height) / 2,
+        backgroundColor: color,
+        transform: [{ translateY: y }],
       }}
     />
   );
 }
 
 function Background() {
-  const { width, height } = useWindowDimensions();
   const still = useReduceMotion();
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {BG_CIRCLES.map((c, i) => (
-        <FloatingCircle key={i} {...c} width={width} height={height} still={still} />
+      <LinearGradient colors={G.background} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
+      {BG_BLOBS.map((b, i) => (
+        <Blob key={i} {...b} still={still} />
       ))}
     </View>
   );
 }
 
-// Every screen: background circles, then a top bar with "‹ Home" on the left
+// Every screen: gradient background with blobs, then a top bar with "‹ Home" on the left
 // (or another link, such as "Menu" on Home) and an optional action on the right.
 // centered: the text block sits in the middle, slightly above the exact centre
 // (screens 08 to 12 and 15 in Figma).
@@ -441,11 +438,11 @@ function StateQuestion({ question, onPick }) {
   }, [fade]);
   return (
     <>
-      <Text style={styles.title}>{question}</Text>
+      <Title>{question}</Title>
       <BreathingBubble />
-      <Animated.View style={[styles.bubbleGrid, { opacity: fade }]}>
+      <Animated.View style={[styles.bubbleGrid, styles.bubbleGrid2, { opacity: fade }]}>
         {GROUPS.map((g) => (
-          <Bubble key={g.id} label={g.label} color={g.color} onPress={() => onPick(g.id)} />
+          <Bubble key={g.id} label={g.label} colors={g.colors} onPress={() => onPick(g.id)} />
         ))}
       </Animated.View>
     </>
@@ -457,14 +454,25 @@ function SpecifyEmotion({ groupId, onPick }) {
   const group = groupById(groupId);
   return (
     <>
-      <Text style={styles.title}>{TEXTS.specifyQuestion}</Text>
+      <Title>{TEXTS.specifyQuestion}</Title>
       <View style={styles.bubbleGrid}>
         {group.emotions.map((e) => (
-          <Bubble key={e} label={e} color={group.color} size={92} onPress={() => onPick(e)} />
+          <Bubble key={e} label={e} colors={group.colors} size={96} fontSize={13} onPress={() => onPick(e)} />
         ))}
       </View>
       <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
     </>
+  );
+}
+
+// Numbered practice steps (S6, S8).
+function Steps({ steps = [] }) {
+  return (
+    <View style={{ alignSelf: 'stretch' }}>
+      {steps.map((step, i) => (
+        <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
+      ))}
+    </View>
   );
 }
 
@@ -613,7 +621,7 @@ function MoodTracker({ checkins }) {
 
   return (
     <>
-      <Text style={styles.title}>Mood tracker</Text>
+      <Title>{TEXTS.trackerTitle}</Title>
       <View style={styles.monthRow}>
         <Pressable onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
           <Text style={styles.monthNav}>‹</Text>
@@ -634,7 +642,7 @@ function MoodTracker({ checkins }) {
           const k = dayKey(date);
           const entries = byDay[k] || [];
           const last = entries.length ? entries[entries.length - 1] : null;
-          const color = last ? groupById(last.group)?.color : 'transparent';
+          const color = last ? groupById(last.group)?.colors[0] : C.surfaceSoft;
           const consistent = entries.length >= CONSISTENT_DAY_CHECKINS;
           return (
             <Pressable key={k} onPress={() => setSelected(k)} style={styles.calendarCell}>
@@ -659,7 +667,7 @@ function MoodTracker({ checkins }) {
         {dayEntries.length >= CONSISTENT_DAY_CHECKINS ? ' ✓' : ''}
       </Text>
       {dayEntries.length === 0 ? (
-        <Text style={styles.body}>No check-in on this day.</Text>
+        <Text style={styles.body}>{TEXTS.noCheckin}</Text>
       ) : (
         dayEntries.map((c) => (
           <View key={c.id} style={styles.entry}>
@@ -946,7 +954,7 @@ export default function App() {
     setScreen('home');
   };
 
-  if (!loaded) return <View style={styles.screen} />;
+  if (!loaded) return <View style={[styles.screen, { backgroundColor: G.background[0] }]} />;
 
   const group = session.group ? groupById(session.group) : null;
   let body = null;
@@ -955,14 +963,14 @@ export default function App() {
     // S0 Welcome and short presentation of the method
     case 'welcome':
       body = (
-        <Screen>
-          <BreathingBubble />
-          <Text style={styles.title}>{TEXTS.welcomeTitle}</Text>
-          <Text style={styles.body}>{TEXTS.welcomeBody}</Text>
-          <Text style={styles.subtitle}>{TEXTS.methodTitle}</Text>
+        <Screen centered>
+          <Title>{TEXTS.welcomeTitle}</Title>
+          <Text style={[styles.body, styles.center]}>{TEXTS.welcomeBody}</Text>
+          <Text style={[styles.subtitle, { marginTop: 16 }]}>{TEXTS.methodTitle}</Text>
           {TEXTS.methodSteps.map((step, i) => (
             <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
           ))}
+          <View style={{ height: 16 }} />
           <Button label={TEXTS.welcomeButton} onPress={() => setScreen('permission')} />
         </Screen>
       );
@@ -971,9 +979,9 @@ export default function App() {
     // S0a Notification permission request → S0b
     case 'permission':
       body = (
-        <Screen>
-          <Text style={styles.title}>{TEXTS.permissionTitle}</Text>
-          <Text style={styles.body}>{TEXTS.permissionBody}</Text>
+        <Screen centered>
+          <Title>{TEXTS.permissionTitle}</Title>
+          <Text style={[styles.body, styles.center, { marginBottom: 16 }]}>{TEXTS.permissionBody}</Text>
           <Button
             label={TEXTS.permissionAllow}
             onPress={async () => {
@@ -997,9 +1005,9 @@ export default function App() {
     // S0b Reminder frequency → ⚙️ plan random reminders → S2
     case 'frequency':
       body = (
-        <Screen>
-          <Text style={styles.title}>{TEXTS.frequencyTitle}</Text>
-          <Text style={styles.body}>{TEXTS.frequencyBody}</Text>
+        <Screen centered>
+          <Title>{TEXTS.frequencyTitle}</Title>
+          <Text style={[styles.body, styles.center]}>{TEXTS.frequencyBody}</Text>
           <Choice
             options={TEXTS.frequencyOptions.map((o) => ({ value: o.hours, label: o.label }))}
             value={settings.frequencyHours}
@@ -1036,7 +1044,7 @@ export default function App() {
           <Pressable onPress={() => { setSession({ source: 'home' }); setScreen('checkin'); }}>
             <BreathingBubble />
           </Pressable>
-          <Text style={styles.title}>{TEXTS.homeTap}</Text>
+          <Text style={[styles.body, styles.center]}>{TEXTS.homeTap}</Text>
         </Screen>
       );
       break;
@@ -1045,28 +1053,28 @@ export default function App() {
     case 'menu':
       body = (
         <Screen onBack={goHome}>
-          <Text style={styles.title}>{TEXTS.menuTitle}</Text>
-          {[
-            { label: TEXTS.menuTracker, onPress: () => setScreen('tracker') },
-            { label: TEXTS.menuJournaling, soon: true },
-            { label: TEXTS.menuVisionBoard, soon: true },
-            { label: TEXTS.menuSettings, onPress: () => { setMessage(''); setScreen('settings'); } },
-          ].map((item) => (
-            <Pressable
-              key={item.label}
-              disabled={item.soon}
-              onPress={item.onPress}
-              style={({ pressed }) => [styles.menuCard, pressed && { borderColor: C.accent }]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.cardTitle, { marginBottom: 0 }, item.soon && { color: C.muted }]}>
-                  {item.label}
-                </Text>
-                {item.soon ? <Text style={styles.small}>{TEXTS.menuSoon}</Text> : null}
-              </View>
-              {item.soon ? null : <Text style={styles.chevron}>›</Text>}
-            </Pressable>
-          ))}
+          <Title>{TEXTS.menuTitle}</Title>
+          <View style={{ marginTop: 8 }}>
+            {[
+              { label: TEXTS.menuTracker, onPress: () => setScreen('tracker') },
+              { label: TEXTS.menuJournaling, soon: true },
+              { label: TEXTS.menuVisionBoard, soon: true },
+              { label: TEXTS.menuSettings, onPress: () => { setMessage(''); setScreen('settings'); } },
+            ].map((item) => (
+              <Pressable
+                key={item.label}
+                disabled={item.soon}
+                onPress={item.onPress}
+                style={({ pressed }) => [styles.menuRow, pressed && { opacity: 0.6 }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.menuText, item.soon && { opacity: 0.5 }]}>{item.label}</Text>
+                  {item.soon ? <Text style={styles.small}>{TEXTS.menuSoon}</Text> : null}
+                </View>
+                {item.soon ? null : <Text style={styles.chevron}>›</Text>}
+              </Pressable>
+            ))}
+          </View>
         </Screen>
       );
       break;
@@ -1105,21 +1113,25 @@ export default function App() {
     // S5 Question, then explanation (title above the text, 20 November 2026)
     case 'explain':
       body = (
-        <Screen onBack={goHome}>
-          <View style={[styles.tag, { backgroundColor: C.primary }]}>
+        <Screen onBack={goHome} centered>
+          <View style={styles.tag}>
             <Text style={styles.tagText}>
               {group.label}
               {session.emotion ? ` · ${session.emotion}` : ''}
             </Text>
           </View>
-          <Text style={styles.title}>{group.question}</Text>
-          <Text style={styles.body}>{group.explanation}</Text>
+          <Title>{group.question}</Title>
+          <Text style={[styles.body, styles.center, { marginBottom: 16 }]}>{group.explanation}</Text>
           <Button
             label={TEXTS.answerNope}
             kind="secondary"
             onPress={() => {
               // S6 + ⚙️ Save the check-in (date/time, emotion group, emotion)
-              const quick = pickRandom(TECHNIQUES[session.group].under1, 1)[0];
+              // One "under 1 min" practice, at random, never the same as the last one shown
+              const list = TECHNIQUES[session.group].under1;
+              const fresh = list.filter((x) => x.name !== settingsRef.current.lastQuick);
+              const quick = pickRandom(fresh.length ? fresh : list, 1)[0];
+              updateSettings({ lastQuick: quick.name });
               const id = newId();
               t('quick_practice_shown', { source: session.source });
               createRecord({
@@ -1144,12 +1156,12 @@ export default function App() {
     // S6 Suggest a technique from "under 1 min"
     case 'quick':
       body = (
-        <Screen onBack={goHome}>
-          <Text style={styles.subtitle}>{TEXTS.quickTitle}</Text>
-          <Text style={styles.title}>{session.technique.name}</Text>
-          <Text style={styles.small}>{session.technique.by}</Text>
-          <Text style={styles.body}>{TECHNIQUE_STEPS_PLACEHOLDER}</Text>
-          <Button label="Continue" onPress={() => setScreen('reminderAsk')} />
+        <Screen onBack={goHome} centered>
+          <Text style={[styles.body, styles.center]}>{TEXTS.quickIntro}</Text>
+          <Title>{session.technique.name}</Title>
+          <Steps steps={session.technique.steps} />
+          <View style={{ height: 16 }} />
+          <Button label={TEXTS.quickContinue} onPress={() => setScreen('reminderAsk')} />
         </Screen>
       );
       break;
@@ -1158,7 +1170,7 @@ export default function App() {
     case 'reminderAsk':
       body = (
         <Screen onBack={goHome} centered>
-          <Text style={styles.title}>{TEXTS.reminderAsk}</Text>
+          <Title>{TEXTS.reminderAsk}</Title>
           <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
           <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
         </Screen>
@@ -1169,7 +1181,7 @@ export default function App() {
     case 'time':
       body = (
         <Screen onBack={goHome} centered>
-          <Text style={styles.title}>{TEXTS.timeQuestion}</Text>
+          <Title>{TEXTS.timeQuestion}</Title>
           {[
             { key: 'under5', label: TEXTS.timeUnder5 },
             { key: 'under15', label: TEXTS.time15 },
@@ -1193,7 +1205,7 @@ export default function App() {
     case 'options':
       body = (
         <Screen onBack={goHome} centered>
-          <Text style={styles.title}>{TEXTS.optionsTitle}</Text>
+          <Title>{TEXTS.optionsTitle}</Title>
           {session.options.map((tech) => (
             <Pressable
               key={tech.name}
@@ -1239,11 +1251,11 @@ export default function App() {
             </>
           ) : (
             <>
-              <Text style={styles.title}>{session.technique.name}</Text>
-              <Text style={styles.body}>{TECHNIQUE_STEPS_PLACEHOLDER}</Text>
+              <Title>{session.technique.name}</Title>
+              <Steps steps={session.technique.steps} />
               <Stepper
                 value={`${session.timerMinutes} min`}
-                label="Timer"
+                label={TEXTS.timerLabel}
                 onMinus={() => setSession((s) => ({ ...s, timerMinutes: Math.max(1, s.timerMinutes - 1) }))}
                 onPlus={() => setSession((s) => ({ ...s, timerMinutes: Math.min(30, s.timerMinutes + 1) }))}
               />
@@ -1301,8 +1313,8 @@ export default function App() {
     case 'thanks':
       body = (
         <Screen centered>
-          <Text style={[styles.small, { textAlign: 'center', color: C.text }]}>{TEXTS.thanksBody}</Text>
-          <Text style={styles.title}>{TEXTS.anotherSessionAsk}</Text>
+          <Text style={[styles.body, styles.center]}>{TEXTS.thanksBody}</Text>
+          <Title>{TEXTS.anotherSessionAsk}</Title>
           <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
           <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
         </Screen>
@@ -1313,7 +1325,7 @@ export default function App() {
     case 'reminder':
       body = (
         <Screen onBack={goHome}>
-          <Text style={styles.title}>{TEXTS.reminderTitle}</Text>
+          <Title>{TEXTS.reminderTitle}</Title>
           <ReminderPicker
             value={reminderDraft}
             onChange={(d) => {
@@ -1324,7 +1336,9 @@ export default function App() {
           <Text style={styles.body}>{formatReminder(reminderDraft.toISOString())}</Text>
           {message ? <Text style={styles.warning}>{message}</Text> : null}
           <Button label={TEXTS.reminderSave} onPress={() => saveReminder()} />
-          <Button label={TEXTS.reminderTest} kind="link" onPress={() => saveReminder(10)} />
+          {CONFIG.showTestTools ? (
+            <Button label={TEXTS.reminderTest} kind="link" onPress={() => saveReminder(10)} />
+          ) : null}
           <Button label={TEXTS.reminderCancel} kind="secondary" onPress={() => setScreen(reminderReturn)} />
         </Screen>
       );
@@ -1334,11 +1348,11 @@ export default function App() {
     case 'settings':
       body = (
         <Screen onBack={goHome}>
-          <Text style={styles.title}>Settings</Text>
+          <Title>{TEXTS.menuSettings}</Title>
 
           <View style={styles.settingRow}>
             <Text style={styles.subtitle}>Notifications</Text>
-            <Switch trackColor={{ true: C.accent }} value={settings.notificationsOn} onValueChange={toggleNotifications} />
+            <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.notificationsOn} onValueChange={toggleNotifications} />
           </View>
 
           <Text style={styles.subtitle}>Reminder frequency</Text>
@@ -1366,11 +1380,11 @@ export default function App() {
 
           <View style={styles.settingRow}>
             <Text style={styles.body}>Sound</Text>
-            <Switch trackColor={{ true: C.accent }} value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
+            <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
           </View>
           <View style={styles.settingRow}>
             <Text style={styles.body}>Vibration at the end of the timer</Text>
-            <Switch trackColor={{ true: C.accent }} value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
+            <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
           </View>
 
           <Text style={[styles.subtitle, { marginTop: 16 }]}>One-off reminder</Text>
@@ -1388,8 +1402,12 @@ export default function App() {
           <Button label={TEXTS.feedbackButton} onPress={openFeedback} />
           {message ? <Text style={styles.warning}>{message}</Text> : null}
 
-          <Text style={[styles.subtitle, { marginTop: 32 }]}>For testing</Text>
-          <Button label="Reset the app (deletes all data)" kind="link" onPress={resetApp} />
+          {CONFIG.showTestTools ? (
+            <>
+              <Text style={[styles.subtitle, { marginTop: 32 }]}>For testing</Text>
+              <Button label="Reset the app (deletes all data)" kind="link" onPress={resetApp} />
+            </>
+          ) : null}
         </Screen>
       );
       break;
@@ -1413,119 +1431,136 @@ export default function App() {
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       {body}
     </>
   );
 }
 
-// ---------- Styles: Palette Screens Preview + design decisions of 20 November 2026 (Figma) ----------
+// ---------- Styles: berry graphic chart ("Mousse app flow", 25 November 2026) ----------
 
 const C = {
-  background: '#FFFFFF',
-  text: '#1B2A3D', // main text
-  muted: '#4F6275', // secondary text, labels
-  accent: '#3D5A78', // muted blue: links, active states (no large accent fills)
-  primary: '#C9EBFF', // sky blue: main buttons, bubbles, highlights
-  onPrimary: '#10243A', // text on sky blue
-  surface: '#F0F7FC', // pale blue cards
-  divider: '#D6E4EF',
-  warning: '#A3483D',
+  text: '#FBEFF2', // ink: titles and body
+  accent: '#EFA7BA', // links, secondary text, highlights
+  line: '#7A4357', // outlines and dividers
+  onCta: '#FFF5F6', // text on the gradient buttons
+  surface: 'rgba(239,167,186,0.12)', // cards
+  surfaceStrong: 'rgba(239,167,186,0.14)', // tags, stepper buttons
+  surfaceSoft: 'rgba(239,167,186,0.10)', // empty calendar days
+  band: 'rgba(239,167,186,0.25)', // picker band, selected option
+  picker: 'rgba(42,30,61,0.55)',
+  warning: '#F4B6A6',
 };
 
+// Gradients
+const G = {
+  background: ['#3A2B52', '#42323C', '#3A2A20'], // purple to chocolate, top to bottom
+  mainBubble: ['#B86A88', '#963F62', '#72294A'],
+  cta: ['#B0587A', '#8F3A5E'],
+};
+
+// Fonts: titles use a serif (the chart uses Newsreader; Georgia is built into iOS and is
+// the chart's fallback), everything else the system sans serif (the chart uses Inter).
+const SERIF = 'Georgia';
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.background, paddingTop: 56 },
-  content: { paddingHorizontal: 24, paddingBottom: 48 },
+  screen: { flex: 1, backgroundColor: G.background[1], paddingTop: 56 },
+  content: { paddingHorizontal: 28, paddingBottom: 48 },
   topBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, minHeight: 36,
+    paddingHorizontal: 20, minHeight: 36,
   },
-  backText: { fontSize: 16, lineHeight: 22, color: C.accent },
-  // Type scale (20 November 2026): screen titles Regular 24, card and section titles
-  // Semi Bold 16, body Regular 16, small text Regular 14. System sans serif.
+  backText: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: C.accent },
+  // Type scale: titles serif Regular 24/32; second phrase of a title, body: Regular 16/24;
+  // card and section titles Semi Bold 16; small text Regular 14.
   title: {
-    fontSize: 24, lineHeight: 30, fontWeight: '400', color: C.text,
-    marginVertical: 16, textAlign: 'center',
+    fontFamily: SERIF, fontSize: 24, lineHeight: 32, fontWeight: '400', color: C.text,
+    marginTop: 24, marginBottom: 8, textAlign: 'center',
   },
+  titleSmall: { fontFamily: 'System', fontSize: 16, lineHeight: 24, fontWeight: '400', color: C.text },
   subtitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text, marginTop: 8, marginBottom: 4 },
-  titleSpace: { height: 92 }, // height of a two-line title, so the Home bubble sits where the check-in bubble is
-  body: { fontSize: 16, lineHeight: 24, color: C.text, marginVertical: 8 },
-  small: { fontSize: 14, lineHeight: 20, color: C.muted },
+  titleSpace: { height: 88 }, // height of a two-line title, so the Home bubble sits where the check-in bubble is
+  body: { fontSize: 16, lineHeight: 24, color: C.text, marginVertical: 6 },
+  center: { textAlign: 'center' },
+  small: { fontSize: 14, lineHeight: 20, color: C.accent },
   warning: { fontSize: 14, lineHeight: 20, color: C.warning, marginVertical: 8 },
-  link: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: C.accent },
-  menuCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 16,
-    borderWidth: 1, borderColor: 'transparent', paddingVertical: 18, paddingHorizontal: 20, marginVertical: 6,
+  link: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: C.accent },
+  menuRow: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 18,
+    borderBottomWidth: 1, borderBottomColor: C.line,
   },
-  chevron: { fontSize: 22, color: C.accent, marginLeft: 12 },
-  button: {
-    backgroundColor: C.primary,
-    minHeight: 48,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 4,
+  menuText: { fontSize: 16, lineHeight: 24, color: C.text },
+  chevron: { fontSize: 22, color: C.text, marginLeft: 12 },
+  buttonWrap: { marginVertical: 6, borderRadius: 999 },
+  button: { height: 56, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  buttonText: { color: C.onCta, fontSize: 16, fontWeight: '600' },
+  buttonSecondary: {
+    height: 56, borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: 'transparent',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginVertical: 6,
   },
-  buttonSecondary: { backgroundColor: C.background, borderWidth: 1, borderColor: C.muted },
-  buttonLink: { backgroundColor: 'transparent' },
-  buttonText: { color: C.onPrimary, fontSize: 16, fontWeight: '600' },
-  buttonTextSecondary: { color: C.text },
-  buttonTextLink: { color: C.accent, fontWeight: '600', fontSize: 14 },
-  bubbleGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginVertical: 12 },
-  bubble: { alignItems: 'center', justifyContent: 'center', padding: 8 },
+  buttonTextSecondary: { color: C.text, fontSize: 16 },
+  buttonLink: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginVertical: 4 },
+  buttonTextLink: { color: C.accent, fontSize: 16 },
+  bubbleGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginVertical: 16 },
+  bubbleGrid2: { rowGap: 18, columnGap: 20 },
+  bubbleShadow: {
+    shadowColor: '#0A0514', shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
+  },
+  bubble: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 8 },
   bubbleText: { color: C.text, fontWeight: '600', textAlign: 'center' },
-  tag: { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12, marginTop: 8 },
-  tagText: { color: C.accent, fontSize: 13, fontWeight: '600' },
-  card: { backgroundColor: C.surface, borderRadius: 20, padding: 16, marginVertical: 4 },
+  tag: {
+    alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, marginTop: 8,
+    backgroundColor: C.surfaceStrong,
+  },
+  tagText: { color: C.accent, fontSize: 14 },
+  card: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginVertical: 6 },
   cardTitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text, marginBottom: 4 },
   countdown: {
-    fontSize: 96, lineHeight: 112, fontWeight: '400', textAlign: 'center', color: C.text,
+    fontSize: 96, lineHeight: 112, fontWeight: '400', textAlign: 'center', color: C.text, letterSpacing: -2,
     marginBottom: 24, fontVariant: ['tabular-nums'],
   },
-  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 12, gap: 16 },
+  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 12, gap: 14 },
   stepButton: {
-    width: 48, height: 48, borderRadius: 12, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center',
+    width: 40, height: 40, borderRadius: 20, backgroundColor: C.surfaceStrong, alignItems: 'center', justifyContent: 'center',
   },
-  stepButtonText: { fontSize: 24, color: C.accent },
-  stepValue: { fontSize: 22, lineHeight: 28, fontWeight: '600', color: C.text },
+  stepButtonText: { fontSize: 20, color: C.text },
+  stepValue: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text },
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
   monthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   monthNav: { fontSize: 28, color: C.accent, paddingHorizontal: 12 },
   calendar: { flexDirection: 'row', flexWrap: 'wrap' },
-  calendarHead: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 13, fontWeight: '600', color: C.muted, marginBottom: 6 },
+  calendarHead: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 13, fontWeight: '600', color: C.accent, marginBottom: 6 },
   calendarCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  calendarDot: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  calendarDot: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   wheel: {
-    flexDirection: 'row', backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden',
-    marginVertical: 8, paddingHorizontal: 8,
+    flexDirection: 'row', backgroundColor: C.picker, borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: C.line, marginVertical: 8, paddingHorizontal: 8,
   },
   wheelBand: {
-    position: 'absolute', left: 0, right: 0, top: WHEEL_ROW * ((WHEEL_VISIBLE - 1) / 2), height: WHEEL_ROW,
-    backgroundColor: C.primary, opacity: 0.6,
+    position: 'absolute', left: 8, right: 8, top: WHEEL_ROW * ((WHEEL_VISIBLE - 1) / 2), height: WHEEL_ROW,
+    backgroundColor: C.band, borderRadius: 10,
   },
   wheelRow: { height: WHEEL_ROW, alignItems: 'center', justifyContent: 'center' },
-  wheelText: { fontSize: 16, color: C.muted },
-  wheelTextSelected: { color: C.text, fontWeight: '600' },
+  wheelText: { fontSize: 16, color: C.text, fontVariant: ['tabular-nums'] },
+  wheelTextSelected: { fontWeight: '600' },
   centered: { flexGrow: 1, justifyContent: 'center', paddingBottom: 120 },
-  calendarFilled: { borderWidth: 1, borderColor: C.divider },
+  calendarFilled: { borderWidth: 1, borderColor: C.line },
   calendarSelected: { borderWidth: 2, borderColor: C.accent },
-  calendarDay: { color: C.text },
-  entry: { backgroundColor: C.surface, borderRadius: 20, padding: 16, marginVertical: 4 },
+  calendarDay: { color: C.text, fontSize: 14, fontWeight: '600' },
+  entry: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginVertical: 6 },
   entryTitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text },
   consistentMark: { position: 'absolute', bottom: 0, fontSize: 11, color: C.accent, fontWeight: '700' },
-  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8 },
+  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8, justifyContent: 'center' },
   choice: {
     minHeight: 44,
     justifyContent: 'center',
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: C.muted,
-    backgroundColor: C.background,
+    borderColor: C.line,
   },
-  choiceSelected: { backgroundColor: C.primary, borderColor: C.primary },
+  choiceSelected: { backgroundColor: C.band, borderColor: C.accent },
   choiceText: { color: C.text, fontSize: 15 },
-  choiceTextSelected: { color: C.onPrimary, fontWeight: '600' },
+  choiceTextSelected: { fontWeight: '600' },
 });

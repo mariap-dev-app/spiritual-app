@@ -1,12 +1,12 @@
-# Spiritual app: prototype
+# Mousse (working name): prototype
 
-Prototype, version 3.2: the user flow of 20 November 2026 (Review 4), with the design decisions and Round 3 feedback of the same day.
+Prototype, version 4: the user flow of 20 November 2026, the final content of 22 November 2026 (Notion "Finalise content (texts and audio)") and the berry graphic chart of 25 November 2026 (artifact "Mousse app flow").
 Screen numbers (S0–S17, E1–E3) match the FigJam board and the text version on the Notion "User Flow" page.
 
 ## Files
 
 - `App.js`: screens and logic.
-- `src/content.js`: all texts, emotion groups, emotions, approved techniques, and `CONFIG` (PostHog key, feedback form link). Edit content here, not in `App.js`.
+- `src/content.js`: all texts, emotion groups, emotions, approved techniques, `APP_NAME` and `CONFIG` (PostHog key, feedback form link, test tools). Edit content here, not in `App.js`.
 - `package.json`, `app.json`: project settings. If versions are out of date, run `npx expo install --fix`.
 
 Data stays on the phone (AsyncStorage). No server, no account. Each check-in has an ID and timestamps, for a later sync.
@@ -45,7 +45,7 @@ Next times: `npx expo start` in the project folder. Saving a file reloads the ap
 - The intention follows from the state (negative → improve it, positive → make the most of it); no separate question.
 - S8a: two techniques picked at random from the approved table for the group and duration.
 - S8a and S8 show the practice name without its source.
-- S8: timer adjustable from 1 to 30 minutes; default 5 ("Under 5 min") or 15 ("I have 15 min"). While it runs (S8b), the screen shows only a large timer and Stop. Locking the phone does not stop it; the end arrives as a notification. Stop returns to Home.
+- S8: timer adjustable from 1 to 30 minutes; default 5 ("Under 5 min") or 15 ("Around 15 min"). While it runs (S8b), the screen shows only a large timer and Stop. Locking the phone does not stop it; the end arrives as a notification. Stop returns to Home.
 - Timer end with the app open: a soft vibration (if "Vibration" is on). No sound in the app yet; the end notification uses the "Sound" setting.
 - After-check (S15) can be skipped: the practice stays saved as done, without the after state.
 
@@ -63,20 +63,27 @@ Next times: `npx expo start` in the project folder. Saving a file reloads the ap
 - "Send feedback" (Settings) opens `CONFIG.feedbackUrl`. Empty = the app shows "The feedback form is not set up yet."
 - Anonymous usage events are sent to PostHog only when `CONFIG.posthogKey` is set: app_opened, onboarding_done, reminder_opened (random / oneoff), checkin_started (source), quick_practice_shown, practice_chosen, practice_done, practice_stopped, after_check_done, after_check_skipped, oneoff_reminder_set, feedback_opened. The ID is random and not linked to the person. No state, emotion or technique is sent.
 
+## Content (Notion, 22 Nov 2026)
+
+- Welcome, permission, frequency, check-in, question, quick practice, time, thanks and notification texts as in the Notion content table. App name in `APP_NAME` ("Mousse", still to confirm).
+- 12 techniques with one author and their final steps (shown on S6 and S8). Steps for Midal, Singer and the "slow down" practice are marked "to check" in Notion.
+- S6 quick practice: one "under 1 min" practice of the group, at random, never the same as the last one shown, after the line "That's ok! You can practice later. Here is what you can do meanwhile."
+- Test tools ("Test: remind me in 10 seconds" and "Reset the app") are hidden in the beta build. Set `CONFIG.showTestTools` to `true` in `src/content.js` to show them while testing.
+
 ## Placeholders
 
-Welcome and method texts, S5 explanations, technique steps.
+The four S5 explanations (left for later, 22 Nov 2026).
 
-Design: the "Palette Screens Preview" plus the design decisions of 20 November 2026, as in the Figma file "Spiritual App Design":
-- Accent #3D5A78 for links and active states; no large accent fills. Main buttons sky blue #C9EBFF.
-- Mood bubbles in the pastel of their group (strong positive #E8F6EC, low positive #FFFBEB, low negative #F0F7FC, strong negative #FBEEEB), labels #1B2A3D, no ring. The ring stays only around the breathing bubble.
-- Background: thin outlined circles (#D6E4EF) of different sizes rise from the bottom to the top on every screen, 10 to 18 seconds per rise; they stay still when "Reduce motion" is on.
-- Type scale: screen titles Regular 24 px, card and section titles Semi Bold 16 px, body Regular 16 px, small text Regular 14 px (system sans serif).
-- Main bubble: 220 px light ring with a 140 px sky-blue circle (Welcome, Home, check-in).
+## Design (graphic chart of 25 Nov 2026)
+
+- Background: vertical gradient #3A2B52 → #42323C → #3A2A20, with four soft berry blobs that float up and down (18 s). Still when "Reduce motion" is on.
+- Text #FBEFF2; accent #EFA7BA (links, secondary text); lines #7A4357.
+- Main bubble: 220 px, gradient #B86A88 → #963F62 → #72294A, soft shadow, no ring. It grows by 10 % on the breath in (4 s) and returns on the breath out (6 s).
+- Mood bubbles: 130 px (states, 2 x 2) and 96 px (emotions, 3 x 3), gradient per group: strong positive #74465A → #55324A, low positive #76495C → #56364A, low negative #684458 → #4C2F41, strong negative #864A66 → #5E3450.
+- Buttons: 56 px pills. Primary: gradient #B0587A → #8F3A5E, text #FFF5F6. Secondary: 1 px outline #7A4357.
+- Type: titles in a serif, Regular 24/32 (Newsreader in the chart; the app uses Georgia, built into iOS). The second phrase of a title, body and labels: system sans serif 16/24 (Inter in the chart). Card and section titles Semi Bold 16; small text 14 in the accent colour.
+- Cards rgba(239,167,186,0.12), radius 16. Menu as rows with a divider line. Reminder picker with a pink band on the selected row.
+- Timer running: 96 px numbers and Stop.
 - Titles are centred; where a title has two phrases, the second starts on a new line (`\n` in `src/content.js`).
-- Screens 08 to 12 and 15 (reminder question, time, choose practice, timer, thanks): the text block sits in the middle of the screen, slightly above the exact centre.
-- Explanation screen (06): the question title sits above the explanation text.
-- Dates and times: 24-hour clock, "Fri 20 Nov, 08:30" (set-up reminder screen, Settings).
-- Thanks screen (S17): "Thanks for recording! It's consistency that matters!" is body text; "Do you want to schedule another session?" is the title.
-- Headings in #1B2A3D. "‹ Home" on the left edge.
-- Dark theme: not decided yet.
+- Screens 08 to 12 and 15: the text block sits in the middle of the screen, slightly above the exact centre.
+- Dates and times: 24-hour clock, "Fri 20 Nov, 08:30".
