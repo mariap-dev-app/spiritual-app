@@ -40,7 +40,7 @@ Next times: `npx expo start` in the project folder. Saving a file reloads the ap
 - Tapping any reminder opens the check-in (S2).
 
 ### Check-in and practice
-- S2 and S3 share one screen: "Take a breath in. / How are you feeling?", then the 4 state bubbles appear after one breath in (4 seconds).
+- S2 and S3 share one screen: "Take a deep breath in. / How are you feeling?", then the 4 state bubbles appear after one breath in (4 seconds).
 - S4 and S16 show the 9 emotions of the chosen group (3 x 3 grid), plus Skip.
 - The intention follows from the state (negative → improve it, positive → make the most of it); no separate question.
 - S8a: two techniques picked at random from the approved table for the group and duration.
