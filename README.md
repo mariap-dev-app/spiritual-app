@@ -11,20 +11,23 @@ Screen numbers (S0–S17, E1–E3) match the FigJam board and the text version o
 
 Data stays on the phone (AsyncStorage). No server, no account. Each check-in has an ID and timestamps, for a later sync.
 
-## Test in Expo Go with Expo Snack
+## Test on the iPhone (Expo Go, SDK 58)
 
-1. Open snack.expo.dev and sign in.
-2. Replace `App.js` and `src/content.js` with the ones from this repository.
-3. Accept the missing dependencies Snack suggests (`expo-notifications`, `@react-native-async-storage/async-storage`).
-4. Choose My Device and open it in Expo Go on the iPhone.
+The App Store version of Expo Go supports only SDK 58. Expo Snack stops at SDK 56, so the app now runs from the computer with Expo CLI.
 
-## Test locally (later)
+First time:
+1. Install Node.js 22.13 or newer (the LTS version from nodejs.org).
+2. Download this repository (GitHub: Code → Download ZIP, then unzip) or clone it.
+3. In a terminal, go to the project folder and run:
+   ```
+   npm install
+   npx expo install --fix
+   npx expo start
+   ```
+   `npx expo install --fix` sets every package to the exact version that matches SDK 58.
+4. Scan the QR code in the terminal with the iPhone camera; it opens in Expo Go. The phone and the computer must be on the same Wi-Fi. If they cannot be, use `npx expo start --tunnel`.
 
-```
-npm install
-npx expo install --fix
-npx expo start
-```
+Next times: `npx expo start` in the project folder. Saving a file reloads the app on the phone.
 
 ## Behaviour built in
 
