@@ -60,7 +60,7 @@ Next times: `npx expo start` in the project folder. Saving a file reloads the ap
 - S0 welcome and method steps → S0a notification permission → S0b reminder frequency → first check-in.
 
 ### Beta feedback and analytics
-- "Send feedback" (Settings) opens `CONFIG.feedbackUrl`. Empty = the app shows "The feedback form is not set up yet."
+- "Send feedback" (Settings) opens `CONFIG.feedbackUrl` (planned: the public link of the Notion form "Beta feedback (form answers)"). Empty = the app shows "The feedback form is not set up yet."
 - Anonymous usage events are sent to PostHog only when `CONFIG.posthogKey` is set: app_opened, onboarding_done, reminder_opened (random / oneoff), checkin_started (source), quick_practice_shown, practice_chosen, practice_done, practice_stopped, after_check_done, after_check_skipped, oneoff_reminder_set, feedback_opened. The ID is random and not linked to the person. No state, emotion or technique is sent.
 
 ## Content (Notion, 22 Nov 2026)
@@ -79,8 +79,11 @@ None in the screens. The "i" card (author and source) comes later.
 - Loading screen of about 2 s at each opening (background, blobs, app name). Background blobs twice as fast (9 s cycle).
 - Two-phrase titles: both lines in the same serif font and size. Long one-sentence titles (S0b, S9, S17) at 20 px.
 - Emotion bubbles 100 px, all labels 12 px.
-- S5, S6, S7, S8: buttons at the bottom of the screen. S6 and S8: steps in pink, appearing one by one (first after 0.5 s, then every 1.5 s); the buttons (and the timer on S8) appear after the last step.
+- S5, S6, S7, S8: buttons right after the text, with a 32 px gap (second round of comments). S6 and S8: practice name in pink, steps in white, appearing one by one (first after 0.5 s, then every 1.5 s); the buttons (and the timer on S8) come one interval after the last step, with the same animation.
+- Emotion bubbles: always 3 per row; their size follows the screen width (at most 100 px).
+- S9a: "Remove reminder" link when a reminder exists (moved from Settings).
 - S8a: practice names in pink. S9a: no date line under the picker.
+- Settings: "Reminder frequency" renamed "Daily reminders"; the note "At a random time within each period" removed.
 - S15: "Your practice is over. / How are you feeling now?"; Skip as a text link.
 - S17: "Thanks for recording! / It's consistency that matters!"
 - Settings: notification message and "Open iPhone Settings" under the switch; "No reminders" option; "Starting at" (default 09:00, replaces the end of the quiet hours); one-off reminder before quiet hours; quiet hours as "Reminders stop at" on one line.

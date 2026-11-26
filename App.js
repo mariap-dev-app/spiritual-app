@@ -15,6 +15,7 @@ import {
   Text,
   Vibration,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -152,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.5.0' },
+        properties: { ...properties, app_version: '0.5.1' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -464,9 +465,16 @@ function Background() {
 // (or another link, such as "Menu" on Home) and an optional action on the right.
 // centered: the text block sits in the middle, slightly above the exact centre
 // (screens 08 to 12 and 15 in Figma).
-function Screen({ children, onBack, left, right, centered = false, footer, scroll = true }) {
+function Screen({ children, onBack, left, right, centered = false, after, scroll = true }) {
   const Body = scroll ? ScrollView : View;
-  const bodyStyle = [styles.content, centered && (footer ? styles.centeredWithFooter : styles.centered)];
+  const bodyStyle = [styles.content, centered && styles.centered];
+  const content = (
+    <>
+      {children}
+      {/* after: buttons placed after the text with a 32 px gap (S5, S6, S7, S8; feedback of 26 Nov) */}
+      {after ? <View style={styles.after}>{after}</View> : null}
+    </>
+  );
   return (
     <View style={styles.screen}>
       <Background />
@@ -481,26 +489,23 @@ function Screen({ children, onBack, left, right, centered = false, footer, scrol
           ))}
         {right || null}
       </View>
-      <Body
-        style={{ flex: 1 }}
-        contentContainerStyle={scroll ? bodyStyle : undefined}
-      >
-        {scroll ? children : <View style={bodyStyle}>{children}</View>}
+      <Body style={{ flex: 1 }} contentContainerStyle={scroll ? bodyStyle : undefined}>
+        {scroll ? content : <View style={bodyStyle}>{content}</View>}
       </Body>
-      {/* footer: buttons at the bottom of the screen (S5, S6, S7, S8; feedback of 26 Nov) */}
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </View>
   );
 }
 
-// Fades its content in (used for the buttons that appear after the steps).
+// Reveals its content like a practice step (fade in and rise 8 px over 0.7 s); used for the
+// timer and buttons that come after the steps on S6 and S8.
 function FadeIn({ visible, children }) {
-  const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const v = useRef(new Animated.Value(visible ? 1 : 0)).current;
   useEffect(() => {
-    Animated.timing(opacity, { toValue: visible ? 1 : 0, duration: 500, useNativeDriver: true }).start();
-  }, [visible, opacity]);
+    Animated.timing(v, { toValue: visible ? 1 : 0, duration: 700, useNativeDriver: true }).start();
+  }, [visible, v]);
+  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
   return (
-    <Animated.View style={{ opacity }} pointerEvents={visible ? 'auto' : 'none'}>
+    <Animated.View style={{ opacity: v, transform: [{ translateY }] }} pointerEvents={visible ? 'auto' : 'none'}>
       {children}
     </Animated.View>
   );
@@ -525,15 +530,18 @@ function StateQuestion({ question, onPick }) {
   );
 }
 
-// S4 and S16: optional emotion within the chosen group.
+// S4 and S16: optional emotion within the chosen group. Always 3 bubbles per row: the
+// bubble size follows the screen width (at most 100 px).
 function SpecifyEmotion({ groupId, onPick }) {
   const group = groupById(groupId);
+  const { width } = useWindowDimensions();
+  const size = Math.min(100, Math.floor((width - 2 * 28 - 2 * 12) / 3));
   return (
     <>
       <Title>{TEXTS.specifyQuestion}</Title>
       <View style={styles.bubbleGrid}>
         {group.emotions.map((e) => (
-          <Bubble key={e} label={e} groupId={group.id} colors={group.colors} size={100} fontSize={12} onPress={() => onPick(e)} />
+          <Bubble key={e} label={e} groupId={group.id} colors={group.colors} size={size} fontSize={12} onPress={() => onPick(e)} />
         ))}
       </View>
       <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
@@ -541,7 +549,7 @@ function SpecifyEmotion({ groupId, onPick }) {
   );
 }
 
-// Numbered practice steps (S6, S8), in pink. They appear one by one: the first after
+// Numbered practice steps (S6, S8), in white. They appear one by one: the first after
 // 0.5 s, then one every 1.5 s, each fading in and rising slightly. onDone runs after the
 // last one. With "Reduce motion" on, all steps show at once.
 const STEP_FIRST_MS = 500;
@@ -560,7 +568,7 @@ function StepLine({ text, delay, still }) {
   }, [v, delay, still]);
   const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
   return (
-    <Animated.Text style={[styles.body, styles.stepText, { opacity: v, transform: [{ translateY }] }]}>
+    <Animated.Text style={[styles.body, { opacity: v, transform: [{ translateY }] }]}>
       {text}
     </Animated.Text>
   );
@@ -574,7 +582,8 @@ function Steps({ steps = [], onDone }) {
       onDone();
       return undefined;
     }
-    const timer = setTimeout(onDone, STEP_FIRST_MS + (steps.length - 1) * STEP_EVERY_MS + 700);
+    // The buttons come one step-interval after the last step, like a next step
+    const timer = setTimeout(onDone, STEP_FIRST_MS + steps.length * STEP_EVERY_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [still, steps]);
@@ -1329,7 +1338,7 @@ export default function App() {
         <Screen
           onBack={goHome}
           centered
-          footer={
+          after={
             <>
               <Button label={TEXTS.answerNope} kind="secondary" onPress={chooseQuick} />
               <Button label={TEXTS.answerYes} onPress={() => setScreen('time')} />
@@ -1355,14 +1364,14 @@ export default function App() {
         <Screen
           onBack={goHome}
           centered
-          footer={
+          after={
             <FadeIn visible={stepsDoneFor === `${screen}-${session.recordId}`}>
               <Button label={TEXTS.quickContinue} onPress={() => setScreen('reminderAsk')} />
             </FadeIn>
           }
         >
           <Text style={[styles.body, styles.center]}>{TEXTS.quickIntro}</Text>
-          <Title>{session.technique.name}</Title>
+          <Title style={{ color: C.accent }}>{session.technique.name}</Title>
           <Steps steps={session.technique.steps} onDone={() => setStepsDoneFor(`${screen}-${session.recordId}`)} />
         </Screen>
       );
@@ -1385,7 +1394,7 @@ export default function App() {
         <Screen
           onBack={goHome}
           centered
-          footer={[
+          after={[
             { key: 'under5', label: TEXTS.timeUnder5 },
             { key: 'under15', label: TEXTS.time15 },
           ].map((choice) => (
@@ -1456,7 +1465,7 @@ export default function App() {
         <Screen
           onBack={goHome}
           centered
-          footer={
+          after={
             <FadeIn visible={stepsDoneFor === `${screen}-${session.recordId}`}>
               <Stepper
                 value={`${session.timerMinutes} min`}
@@ -1468,7 +1477,7 @@ export default function App() {
             </FadeIn>
           }
         >
-          <Title>{session.technique.name}</Title>
+          <Title style={{ color: C.accent }}>{session.technique.name}</Title>
           <Steps steps={session.technique.steps} onDone={() => setStepsDoneFor(`${screen}-${session.recordId}`)} />
         </Screen>
       );
@@ -1543,6 +1552,16 @@ export default function App() {
           />
           {message ? <Text style={styles.warning}>{message}</Text> : null}
           <Button label={TEXTS.reminderSave} onPress={() => saveReminder()} />
+          {settings.reminder ? (
+            <Button
+              label={TEXTS.reminderRemove}
+              kind="link"
+              onPress={async () => {
+                await removeReminder();
+                setScreen(reminderReturn);
+              }}
+            />
+          ) : null}
           {CONFIG.showTestTools ? (
             <Button label={TEXTS.reminderTest} kind="link" onPress={() => saveReminder(10)} />
           ) : null}
@@ -1569,7 +1588,6 @@ export default function App() {
           ) : null}
 
           <Text style={[styles.subtitle, { marginTop: 16 }]}>{TEXTS.settingsFrequency}</Text>
-          <Text style={styles.small}>{TEXTS.settingsFrequencyNote}</Text>
           <Choice
             options={TEXTS.frequencyOptions.map((o) => ({ value: o.hours, label: o.label }))}
             value={settings.frequencyHours}
@@ -1593,7 +1611,6 @@ export default function App() {
             kind="secondary"
             onPress={() => openReminder('settings')}
           />
-          {settings.reminder ? <Button label={TEXTS.settingsOneOffRemove} kind="link" onPress={removeReminder} /> : null}
 
           {settings.frequencyHours ? (
             <>
@@ -1766,9 +1783,7 @@ const styles = StyleSheet.create({
   wheelText: { fontSize: 16, color: C.text, fontVariant: ['tabular-nums'] },
   wheelTextSelected: { fontWeight: '600' },
   centered: { flexGrow: 1, justifyContent: 'center', paddingBottom: 120 },
-  centeredWithFooter: { flexGrow: 1, justifyContent: 'center', paddingBottom: 24 },
-  footer: { paddingHorizontal: 28, paddingBottom: 48, paddingTop: 8 },
-  stepText: { color: C.accent },
+  after: { marginTop: 32 },
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   splashTitle: { fontFamily: SERIF, fontSize: 44, lineHeight: 52, color: C.text },
   inlineStepper: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 8 },
