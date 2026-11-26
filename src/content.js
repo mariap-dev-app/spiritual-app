@@ -40,11 +40,12 @@ export const TEXTS = {
 
   frequencyTitle: 'How often should we remind you?',
   frequencyBody:
-    'Each reminder comes at a random time within the period, never during quiet hours (22:00 to 08:00 by default). You can change this later in Settings.',
+    'Each reminder comes at a random time within the period, from 09:00 and never after 22:00 by default. You can change this later in Settings.',
   frequencyOptions: [
     { hours: 3, label: 'Every 3 hours' },
     { hours: 2, label: 'Every 2 hours' },
     { hours: 1, label: 'Every hour' },
+    { hours: 0, label: 'No reminders' },
   ],
   frequencyContinue: 'Continue',
 
@@ -58,7 +59,7 @@ export const TEXTS = {
   menuSoon: 'Coming after the beta',
 
   checkInQuestion: 'Take a deep breath in.\nHow are you feeling?',
-  afterQuestion: 'Take a deep breath in.\nHow are you feeling now?',
+  afterQuestion: 'Your practice is over.\nHow are you feeling now?',
   afterSkip: 'Skip',
 
   specifyQuestion: 'Do you want to specify?',
@@ -68,11 +69,11 @@ export const TEXTS = {
   answerYes: 'Yes!',
 
   // S6: one intro line for all four groups, then the steps of one "under 1 min" practice
-  quickIntro: "That's ok! You can practice later. Here is what you can do meanwhile.",
+  quickIntro: "That's ok! You can practice later.\nHere is what you can do meanwhile.",
   quickContinue: 'Continue',
 
   reminderAsk: 'Do you want to set up a reminder for the next session?',
-  thanksBody: "Thanks for recording! It's consistency that matters.",
+  thanksBody: "Thanks for recording!\nIt's consistency that matters!",
   anotherSessionAsk: 'Do you want to schedule another session?',
   yes: 'Yes!',
   no: 'No',
@@ -99,11 +100,29 @@ export const TEXTS = {
   notificationsBlocked:
     'Notifications are turned off for this app. You can turn them on in the iPhone Settings app, under Notifications.',
 
+  // Settings (S12)
+  settingsNotifications: 'Notifications',
+  settingsOpenPhoneSettings: 'Open iPhone Settings',
+  settingsFrequency: 'Reminder frequency',
+  settingsFrequencyNote: 'At a random time within each period.',
+  settingsStartingAt: 'Starting at',
+  settingsOneOff: 'One-off reminder',
+  settingsOneOffNone: 'None set.',
+  settingsOneOffSet: 'Set a one-off reminder',
+  settingsOneOffChange: 'Change one-off reminder',
+  settingsOneOffRemove: 'Remove one-off reminder',
+  settingsQuiet: 'Quiet hours',
+  settingsStopAt: 'Reminders stop at',
+  settingsSound: 'Sound',
+  settingsVibration: 'Vibration at the end of the timer',
+  settingsBeta: 'Beta',
+
   feedbackButton: 'Send feedback',
   feedbackNotSet: 'The feedback form is not set up yet.',
 
   trackerTitle: 'Mood tracker',
   consistentDay: 'Consistent day (3 or more check-ins)',
+  inconsistentDay: '1 or 2 check-ins',
   noCheckin: 'No check-in on this day.',
 };
 
@@ -112,7 +131,7 @@ export const CONSISTENT_DAY_CHECKINS = 3;
 
 // The four emotion groups, with 9 emotions each (one 3 x 3 grid).
 // colors: bubble gradient (top-left to bottom-right) from the graphic chart of 25 Nov 2026.
-// Explanations: still to write (decision 22 Nov 2026: leave for now).
+// Questions and explanations: final (Notion, table 2, 26 Nov 2026).
 export const GROUPS = [
   {
     id: 'strongPositive',
@@ -123,7 +142,7 @@ export const GROUPS = [
       'Proud', 'Confident', 'Energised', 'Eager',
     ],
     explanation:
-      '[Placeholder] Strong positive emotions carry a lot of energy. This is a good moment to let the feeling settle in your body and make it last.',
+      'Strong positive emotions carry a lot of energy. This is a good moment to let the feeling settle in your body and make it last.',
     question: "That's great!\nDo you want to build on it?",
   },
   {
@@ -135,7 +154,7 @@ export const GROUPS = [
       'Serene', 'At ease', 'Secure', 'Fulfilled',
     ],
     explanation:
-      '[Placeholder] You feel calm and steady. A short practice now helps you find this state again later.',
+      'You feel calm and steady. A short practice now helps you find this state again later.',
     question: "That's a good start!\nWant to make it even better?",
   },
   {
@@ -147,7 +166,7 @@ export const GROUPS = [
       'Discouraged', 'Empty', 'Numb', 'Drained',
     ],
     explanation:
-      "[Placeholder] Low emotions are part of life. You don't need to change them right away: noticing them is already a step.",
+      "Low emotions are part of life. You don't need to change them right away: acknowledging them is the first step.",
     question: "That's ok.\nWould you like to find a little more lightness?",
   },
   {
@@ -159,7 +178,7 @@ export const GROUPS = [
       'Afraid', 'Irritated', 'Restless', 'Jealous',
     ],
     explanation:
-      '[Placeholder] Strong emotions show up in the body first. Calming the breath can help before anything else.',
+      'Strong emotions show up first. Accepting and softly feeling them in your body will bring you more ease.',
     question: 'That sounds hard.\nWould you like to work through it?',
   },
 ];

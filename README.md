@@ -1,6 +1,6 @@
 # Mousse (working name): prototype
 
-Prototype, version 4: the user flow of 20 November 2026, the final content of 22 November 2026 (Notion "Finalise content (texts and audio)") and the berry graphic chart of 25 November 2026 (artifact "Mousse app flow").
+Prototype, version 5 (26 Nov 2026: content and design feedback applied, final S5 explanations). Version 4 base: the user flow of 20 November 2026, the final content of 22 November 2026 (Notion "Finalise content (texts and audio)") and the berry graphic chart of 25 November 2026 (artifact "Mousse app flow").
 Screen numbers (S0–S17, E1–E3) match the FigJam board and the text version on the Notion "User Flow" page.
 
 ## Files
@@ -72,7 +72,20 @@ Next times: `npx expo start` in the project folder. Saving a file reloads the ap
 
 ## Placeholders
 
-The four S5 explanations (left for later, 22 Nov 2026).
+None in the screens. The "i" card (author and source) comes later.
+
+## Changes of 26 Nov 2026 (feedback on the content table)
+
+- Loading screen of about 2 s at each opening (background, blobs, app name). Background blobs twice as fast (9 s cycle).
+- Two-phrase titles: both lines in the same serif font and size. Long one-sentence titles (S0b, S9, S17) at 20 px.
+- Emotion bubbles 100 px, all labels 12 px.
+- S5, S6, S7, S8: buttons at the bottom of the screen. S6 and S8: steps in pink, appearing one by one (first after 0.5 s, then every 1.5 s); the buttons (and the timer on S8) appear after the last step.
+- S8a: practice names in pink. S9a: no date line under the picker.
+- S15: "Your practice is over. / How are you feeling now?"; Skip as a text link.
+- S17: "Thanks for recording! / It's consistency that matters!"
+- Settings: notification message and "Open iPhone Settings" under the switch; "No reminders" option; "Starting at" (default 09:00, replaces the end of the quiet hours); one-off reminder before quiet hours; quiet hours as "Reminders stop at" on one line.
+- Mood tracker: days coloured by consistency (light pink = 3 or more check-ins, dark berry = 1 or 2); one row per day with check-ins that opens to show them.
+- Final S5 explanations from Notion (table 2).
 
 ## Design (graphic chart of 25 Nov 2026)
 
