@@ -76,10 +76,11 @@ The four S5 explanations (left for later, 22 Nov 2026).
 
 ## Design (graphic chart of 25 Nov 2026)
 
-- Background: vertical gradient #3A2B52 → #42323C → #3A2A20, with four soft berry blobs that float up and down (18 s). Still when "Reduce motion" is on.
+- Background: vertical gradient #3A2B52 → #42323C → #3A2A20, with four soft organic berry blobs (radial gradients) that drift up and down by 40 px, sway slightly and grow by 6 % over an 18 s cycle. Still when "Reduce motion" is on.
+- Shapes: bubbles and blobs are organic, slightly uneven outlines drawn with `react-native-svg`, from the chart's border-radius values (for example the main bubble 52% 48% 55% 45% / 50% 55% 45% 50%), filled with a radial gradient centred at 40 % / 35 %.
 - Text #FBEFF2; accent #EFA7BA (links, secondary text); lines #7A4357.
-- Main bubble: 220 px, gradient #B86A88 → #963F62 → #72294A, soft shadow, no ring. It grows by 10 % on the breath in (4 s) and returns on the breath out (6 s).
-- Mood bubbles: 130 px (states, 2 x 2) and 96 px (emotions, 3 x 3), gradient per group: strong positive #74465A → #55324A, low positive #76495C → #56364A, low negative #684458 → #4C2F41, strong negative #864A66 → #5E3450.
+- Main bubble: 220 px organic shape, radial gradient #B86A88 → #963F62 → #72294A, soft shadow, no ring. It grows by 10 % on the breath in (4 s) and returns on the breath out (6 s).
+- Mood bubbles: 130 px (states, 2 x 2) and 96 px (emotions, 3 x 3), one organic shape and radial gradient per group: strong positive #74465A → #55324A, low positive #76495C → #56364A, low negative #684458 → #4C2F41, strong negative #864A66 → #5E3450.
 - Buttons: 56 px pills. Primary: gradient #B0587A → #8F3A5E, text #FFF5F6. Secondary: 1 px outline #7A4357.
 - Type: titles in a serif, Regular 24/32 (Newsreader in the chart; the app uses Georgia, built into iOS). The second phrase of a title, body and labels: system sans serif 16/24 (Inter in the chart). Card and section titles Semi Bold 16; small text 14 in the accent colour.
 - Cards rgba(239,167,186,0.12), radius 16. Menu as rows with a divider line. Reminder picker with a pink band on the selected row.

@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -149,7 +150,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.4.0' },
+        properties: { ...properties, app_version: '0.4.1' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -275,31 +276,85 @@ function Title({ children, style }) {
   );
 }
 
-// Mood bubbles: round, berry gradient of the emotion group, soft shadow, light label.
-function Bubble({ label, colors, size = 130, fontSize = 16, onPress }) {
+// ---------- Organic shapes (graphic chart 25 Nov 2026) ----------
+// Each shape is written like a CSS border-radius "a b c d / e f g h" (percentages):
+// horizontal then vertical radius of the top-left, top-right, bottom-right and
+// bottom-left corners. Unequal radii give the soft, slightly uneven bubble outline.
+const SHAPES = {
+  main: [52, 48, 55, 45, 50, 55, 45, 50],
+  strongPositive: [50, 50, 46, 54, 56, 44, 56, 44],
+  lowPositive: [48, 52, 45, 55, 55, 45, 55, 45],
+  lowNegative: [52, 48, 50, 50, 45, 55, 45, 55],
+  strongNegative: [50, 50, 56, 44, 48, 52, 48, 52],
+  blobA: [55, 45, 50, 50, 45, 55, 45, 55],
+  blobB: [48, 52, 45, 55, 55, 45, 55, 45],
+  blobC: [52, 48, 55, 45, 50, 55, 45, 50],
+  blobD: [50, 50, 46, 54, 56, 44, 56, 44],
+};
+
+// SVG path for a shape of width w and height h.
+function shapePath(w, h, r) {
+  const [tlx, trx, brx, blx, tly, try_, bry, bly] = r.map((v) => v / 100);
+  const n = (v) => v.toFixed(1);
+  return [
+    `M ${n(tlx * w)} 0`,
+    `L ${n(w - trx * w)} 0`,
+    `A ${n(trx * w)} ${n(try_ * h)} 0 0 1 ${n(w)} ${n(try_ * h)}`,
+    `L ${n(w)} ${n(h - bry * h)}`,
+    `A ${n(brx * w)} ${n(bry * h)} 0 0 1 ${n(w - brx * w)} ${n(h)}`,
+    `L ${n(blx * w)} ${n(h)}`,
+    `A ${n(blx * w)} ${n(bly * h)} 0 0 1 0 ${n(h - bly * h)}`,
+    `L 0 ${n(tly * h)}`,
+    `A ${n(tlx * w)} ${n(tly * h)} 0 0 1 ${n(tlx * w)} 0`,
+    'Z',
+  ].join(' ');
+}
+
+let shapeIds = 0;
+// An organic shape filled with a radial gradient centred at 40 % / 35 %, as in the chart.
+// stops: [[offset 0-1, colour, opacity], ...]
+function OrganicShape({ width, height, shape, stops }) {
+  const id = useRef(`g${(shapeIds += 1)}`).current;
+  return (
+    <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+      <Defs>
+        <RadialGradient id={id} cx="40%" cy="35%" rx="65%" ry="65%" fx="40%" fy="35%">
+          {stops.map(([offset, color, opacity = 1]) => (
+            <Stop key={offset} offset={offset} stopColor={color} stopOpacity={opacity} />
+          ))}
+        </RadialGradient>
+      </Defs>
+      <Path d={shapePath(width, height, shape)} fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
+// Mood bubbles: organic shape and berry gradient of the emotion group, soft shadow, light label.
+function Bubble({ label, groupId, colors, size = 130, fontSize = 16, onPress }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.bubbleShadow,
-        { width: size, height: size, borderRadius: size / 2 },
+        { width: size, height: size },
         pressed && { transform: [{ scale: 0.96 }] },
       ]}
     >
-      <LinearGradient
-        colors={colors}
-        start={{ x: 0.25, y: 0.2 }}
-        end={{ x: 0.85, y: 1 }}
-        style={[styles.bubble, { borderRadius: size / 2 }]}
-      >
+      <OrganicShape
+        width={size}
+        height={size}
+        shape={SHAPES[groupId] || SHAPES.main}
+        stops={[[0, colors[0]], [1, colors[1]]]}
+      />
+      <View style={styles.bubble}>
         <Text style={[styles.bubbleText, { fontSize, lineHeight: Math.round(fontSize * 1.3) }]}>{label}</Text>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }
 
-// Main bubble: 220 px berry circle, no ring. It breathes: grows by 10 % on the breath in
-// (4 s) and returns on the breath out (6 s). Still when "Reduce motion" is on.
+// Main bubble: 220 px organic berry shape, no ring. It breathes: grows by 10 % on the
+// breath in (4 s) and returns on the breath out (6 s). Still when "Reduce motion" is on.
 function BreathingBubble({ size = 220 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const still = useReduceMotion();
@@ -318,27 +373,28 @@ function BreathingBubble({ size = 220 }) {
     <Animated.View
       style={[
         styles.bubbleShadow,
-        { width: size, height: size, borderRadius: size / 2, alignSelf: 'center', marginVertical: 24 },
+        { width: size, height: size, alignSelf: 'center', marginVertical: 24 },
         { transform: [{ scale }] },
       ]}
     >
-      <LinearGradient
-        colors={G.mainBubble}
-        start={{ x: 0.25, y: 0.2 }}
-        end={{ x: 0.85, y: 1 }}
-        style={{ flex: 1, borderRadius: size / 2 }}
+      <OrganicShape
+        width={size}
+        height={size}
+        shape={SHAPES.main}
+        stops={[[0, G.mainBubble[0]], [0.55, G.mainBubble[1]], [1, G.mainBubble[2]]]}
       />
     </Animated.View>
   );
 }
 
 // Background (graphic chart 25 Nov 2026): purple-to-chocolate vertical gradient, with four
-// soft berry blobs that float up and down slowly (18 s). Still when "Reduce motion" is on.
+// soft organic berry blobs that drift up and down and sway slightly (about 18 s per cycle).
+// Still when "Reduce motion" is on.
 const BG_BLOBS = [
-  { left: -70, top: 90, width: 230, height: 200, color: 'rgba(201,74,110,0.20)', delay: 0 },
-  { right: -60, top: 330, width: 200, height: 190, color: 'rgba(201,74,110,0.16)', delay: 6000 },
-  { left: -30, top: 520, width: 170, height: 150, color: 'rgba(201,74,110,0.14)', delay: 10000 },
-  { right: -20, top: 70, width: 120, height: 110, color: 'rgba(239,167,186,0.10)', delay: 3000 },
+  { left: -70, top: 90, width: 230, height: 200, shape: 'blobA', color: '#C94A6E', from: 0.24, to: 0.04, delay: 0 },
+  { right: -60, top: 330, width: 200, height: 190, shape: 'blobB', color: '#C94A6E', from: 0.2, to: 0.03, delay: 6000 },
+  { left: -30, top: 520, width: 170, height: 150, shape: 'blobC', color: '#C94A6E', from: 0.18, to: 0.03, delay: 10000 },
+  { right: -20, top: 70, width: 120, height: 110, shape: 'blobD', color: '#EFA7BA', from: 0.14, to: 0.02, delay: 3000 },
 ];
 
 function useReduceMotion() {
@@ -355,14 +411,14 @@ function useReduceMotion() {
   return reduce;
 }
 
-function Blob({ left, right, top, width, height, color, delay, still }) {
-  const y = useRef(new Animated.Value(0)).current;
+function Blob({ left, right, top, width, height, shape, color, from, to, delay, still }) {
+  const t = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (still) return undefined;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(y, { toValue: -22, duration: 9000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(y, { toValue: 0, duration: 9000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 1, duration: 9000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 0, duration: 9000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     );
     const timer = setTimeout(() => loop.start(), delay % 9000);
@@ -370,7 +426,10 @@ function Blob({ left, right, top, width, height, color, delay, still }) {
       clearTimeout(timer);
       loop.stop();
     };
-  }, [still, y, delay]);
+  }, [still, t, delay]);
+  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [0, -40] });
+  const translateX = t.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 10, 0] });
+  const scale = t.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
   return (
     <Animated.View
       style={{
@@ -380,11 +439,16 @@ function Blob({ left, right, top, width, height, color, delay, still }) {
         top,
         width,
         height,
-        borderRadius: Math.max(width, height) / 2,
-        backgroundColor: color,
-        transform: [{ translateY: y }],
+        transform: [{ translateY }, { translateX }, { scale }],
       }}
-    />
+    >
+      <OrganicShape
+        width={width}
+        height={height}
+        shape={SHAPES[shape]}
+        stops={[[0, color, from], [0.72, color, to], [1, color, to]]}
+      />
+    </Animated.View>
   );
 }
 
@@ -442,7 +506,7 @@ function StateQuestion({ question, onPick }) {
       <BreathingBubble />
       <Animated.View style={[styles.bubbleGrid, styles.bubbleGrid2, { opacity: fade }]}>
         {GROUPS.map((g) => (
-          <Bubble key={g.id} label={g.label} colors={g.colors} onPress={() => onPick(g.id)} />
+          <Bubble key={g.id} label={g.label} groupId={g.id} colors={g.colors} onPress={() => onPick(g.id)} />
         ))}
       </Animated.View>
     </>
@@ -457,7 +521,7 @@ function SpecifyEmotion({ groupId, onPick }) {
       <Title>{TEXTS.specifyQuestion}</Title>
       <View style={styles.bubbleGrid}>
         {group.emotions.map((e) => (
-          <Bubble key={e} label={e} colors={group.colors} size={96} fontSize={13} onPress={() => onPick(e)} />
+          <Bubble key={e} label={e} groupId={group.id} colors={group.colors} size={96} fontSize={13} onPress={() => onPick(e)} />
         ))}
       </View>
       <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
@@ -1507,7 +1571,7 @@ const styles = StyleSheet.create({
     shadowColor: '#0A0514', shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 12 },
     elevation: 8,
   },
-  bubble: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 8 },
+  bubble: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 10 },
   bubbleText: { color: C.text, fontWeight: '600', textAlign: 'center' },
   tag: {
     alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, marginTop: 8,
