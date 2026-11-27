@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.6' },
+        properties: { ...properties, app_version: '0.7.7' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -1722,66 +1722,74 @@ export default function App() {
         <Screen onBack={goHome}>
           <Title>{TEXTS.menuSettings}</Title>
 
-          <View style={styles.settingRow}>
-            <Text style={styles.subtitle}>{TEXTS.settingsNotifications}</Text>
-            <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.notificationsOn} onValueChange={toggleNotifications} />
+          {/* Settings grouped in cards, like the practice cards (27 Nov) */}
+          {/* Card 1: notifications in general */}
+          <View style={styles.settingsCard}>
+            <View style={styles.settingRowTop}>
+              <Text style={[styles.subtitle, styles.cardHeading]}>{TEXTS.settingsNotifications}</Text>
+              <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.notificationsOn} onValueChange={toggleNotifications} />
+            </View>
+            {notifMessage ? (
+              <>
+                <Text style={styles.warning}>{notifMessage}</Text>
+                <Button label={TEXTS.settingsOpenPhoneSettings} kind="secondary" onPress={openPhoneSettings} />
+              </>
+            ) : null}
+            <View style={styles.settingRow}>
+              <Text style={styles.body}>{TEXTS.settingsSound}</Text>
+              <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
+            </View>
+            <View style={[styles.settingRow, { marginBottom: 0 }]}>
+              <Text style={styles.body}>{TEXTS.settingsVibration}</Text>
+              <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
+            </View>
           </View>
-          {notifMessage ? (
-            <>
-              <Text style={styles.warning}>{notifMessage}</Text>
-              <Button label={TEXTS.settingsOpenPhoneSettings} kind="secondary" onPress={openPhoneSettings} />
-            </>
-          ) : null}
 
-          <Text style={[styles.subtitle, { marginTop: 16 }]}>{TEXTS.settingsFrequency}</Text>
-          <Choice
-            options={TEXTS.frequencyOptions.map((o) => ({ value: o.hours, label: o.label }))}
-            value={settings.frequencyHours}
-            onChange={(hours) => updateAndReplan({ frequencyHours: hours })}
-          />
-          {settings.frequencyHours ? (
-            <InlineStepper
-              label={TEXTS.settingsStartingAt}
-              value={`${pad(settings.quietEnd)}:00`}
-              onMinus={() => updateAndReplan({ quietEnd: Math.max(5, settings.quietEnd - 1) })}
-              onPlus={() => updateAndReplan({ quietEnd: Math.min(12, settings.quietEnd + 1) })}
+          {/* Card 2: daily (random) reminders, with when they start and stop */}
+          <View style={styles.settingsCard}>
+            <Text style={[styles.subtitle, styles.cardHeading]}>{TEXTS.settingsFrequency}</Text>
+            <Choice
+              options={TEXTS.frequencyOptions.map((o) => ({ value: o.hours, label: o.label }))}
+              value={settings.frequencyHours}
+              onChange={(hours) => updateAndReplan({ frequencyHours: hours })}
             />
-          ) : null}
-
-          <Text style={[styles.subtitle, { marginTop: 16 }]}>{TEXTS.settingsOneOff}</Text>
-          <Text style={styles.body}>
-            {settings.reminder ? formatReminder(settings.reminder.at) : TEXTS.settingsOneOffNone}
-          </Text>
-          <Button
-            label={settings.reminder ? TEXTS.settingsOneOffChange : TEXTS.settingsOneOffSet}
-            kind="secondary"
-            onPress={() => openReminder('settings')}
-          />
-
-          {settings.frequencyHours ? (
-            <>
-              <Text style={[styles.subtitle, { marginTop: 16 }]}>{TEXTS.settingsQuiet}</Text>
-              <InlineStepper
-                label={TEXTS.settingsStopAt}
-                value={`${pad(settings.quietStart)}:00`}
-                onMinus={() => updateAndReplan({ quietStart: Math.max(18, settings.quietStart - 1) })}
-                onPlus={() => updateAndReplan({ quietStart: Math.min(23, settings.quietStart + 1) })}
-              />
-            </>
-          ) : null}
-
-          <View style={[styles.settingRow, { marginTop: 16 }]}>
-            <Text style={styles.body}>{TEXTS.settingsSound}</Text>
-            <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
-          </View>
-          <View style={styles.settingRow}>
-            <Text style={styles.body}>{TEXTS.settingsVibration}</Text>
-            <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
+            {settings.frequencyHours ? (
+              <>
+                <InlineStepper
+                  label={TEXTS.settingsStartingAt}
+                  value={`${pad(settings.quietEnd)}:00`}
+                  onMinus={() => updateAndReplan({ quietEnd: Math.max(5, settings.quietEnd - 1) })}
+                  onPlus={() => updateAndReplan({ quietEnd: Math.min(12, settings.quietEnd + 1) })}
+                />
+                <InlineStepper
+                  label={TEXTS.settingsStopAt}
+                  value={`${pad(settings.quietStart)}:00`}
+                  onMinus={() => updateAndReplan({ quietStart: Math.max(18, settings.quietStart - 1) })}
+                  onPlus={() => updateAndReplan({ quietStart: Math.min(23, settings.quietStart + 1) })}
+                />
+              </>
+            ) : null}
           </View>
 
-          <Text style={[styles.subtitle, { marginTop: 16 }]}>{TEXTS.settingsBeta}</Text>
-          <Button label={TEXTS.feedbackButton} onPress={openFeedback} />
-          {message ? <Text style={styles.warning}>{message}</Text> : null}
+          {/* Card 3: one-off reminder */}
+          <View style={styles.settingsCard}>
+            <Text style={[styles.subtitle, styles.cardHeading]}>{TEXTS.settingsOneOff}</Text>
+            <Text style={styles.body}>
+              {settings.reminder ? formatReminder(settings.reminder.at) : TEXTS.settingsOneOffNone}
+            </Text>
+            <Button
+              label={settings.reminder ? TEXTS.settingsOneOffChange : TEXTS.settingsOneOffSet}
+              kind="secondary"
+              onPress={() => openReminder('settings')}
+            />
+          </View>
+
+          {/* Card 4: beta feedback */}
+          <View style={styles.settingsCard}>
+            <Text style={[styles.subtitle, styles.cardHeading]}>{TEXTS.settingsBeta}</Text>
+            <Button label={TEXTS.feedbackButton} onPress={openFeedback} />
+            {message ? <Text style={styles.warning}>{message}</Text> : null}
+          </View>
 
           {CONFIG.showTestTools ? (
             <>
@@ -1956,6 +1964,9 @@ const styles = StyleSheet.create({
   wheelTextSelected: { fontWeight: '600' },
   centered: { flexGrow: 1, justifyContent: 'center', paddingBottom: 120 },
   after: { marginTop: 32 },
+  settingsCard: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginVertical: 8 },
+  cardHeading: { marginTop: 0, marginBottom: 8 },
+  settingRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   splashTitle: { fontFamily: SERIF, fontSize: 44, lineHeight: 52, color: C.text },
   inlineStepper: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 8 },
