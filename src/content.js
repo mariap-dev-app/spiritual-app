@@ -11,7 +11,8 @@ export const CONFIG = {
   posthogKey: '',
   posthogHost: 'https://eu.i.posthog.com',
   // Link to the beta feedback form (for example a Tally or Google Form). Empty = button shows a message.
-  feedbackUrl: '',
+  // Notion form "Feedback form" (database "Beta feedback (form answers)"), added 27 Nov 2026.
+  feedbackUrl: 'https://app.notion.com/p/424ec6d3977a812da179f144632eb312?v=424ec6d3977a81ca8369000ce95a10b0&source=copy_link',
   // Test tools: "Test: remind me in 10 seconds" (S9a) and "Reset the app" (S12).
   // false for the beta build (decided 22 Nov 2026); set to true while testing.
   showTestTools: false,
