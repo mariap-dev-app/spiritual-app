@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mousse (prototype)",
     "slug": "spiritual-app",
-    "version": "0.7.5",
+    "version": "0.7.6",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "ios": {

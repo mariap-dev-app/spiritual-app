@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.5' },
+        properties: { ...properties, app_version: '0.7.6' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -529,7 +529,7 @@ function Screen({ children, onBack, left, right, centered = false, after, scroll
 function FadeIn({ visible, children }) {
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(v, { toValue: visible ? 1 : 0, duration: MOTION.fadeIn, delay: visible ? MOTION.overlap : 0, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+    Animated.timing(v, { toValue: visible ? 1 : 0, duration: MOTION.fadeIn, delay: visible ? MOTION.overlap : 0, easing: Easing.inOut(Easing.ease), useNativeDriver: true }).start();
   }, [visible, v]);
   const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
   return (
@@ -597,7 +597,7 @@ function CheckinStage({ phase, question, onTapBubble, onPick }) {
       fade.setValue(1);
       return undefined;
     }
-    const a = Animated.timing(fade, { toValue: 1, duration: MOTION.appear, delay: MOTION.breathIn, easing: Easing.out(Easing.ease), useNativeDriver: true });
+    const a = Animated.timing(fade, { toValue: 1, duration: MOTION.appear, delay: MOTION.breathIn, easing: Easing.inOut(Easing.ease), useNativeDriver: true });
     a.start();
     return () => a.stop();
   }, [phase, fade, still]);
@@ -631,7 +631,7 @@ function CheckinStage({ phase, question, onTapBubble, onPick }) {
 function StateQuestion({ question, onPick }) {
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fade, { toValue: 1, duration: MOTION.appear, delay: MOTION.breathIn, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+    Animated.timing(fade, { toValue: 1, duration: MOTION.appear, delay: MOTION.breathIn, easing: Easing.inOut(Easing.ease), useNativeDriver: true }).start();
   }, [fade]);
   return (
     <>
@@ -949,7 +949,7 @@ function ScreenFadeInner({ children }) {
       v.setValue(1);
       return;
     }
-    Animated.timing(v, { toValue: 1, duration: MOTION.fadeIn, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+    Animated.timing(v, { toValue: 1, duration: MOTION.fadeIn, easing: Easing.inOut(Easing.ease), useNativeDriver: true }).start();
   }, [v, still]);
   const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
   return <Animated.View style={{ flex: 1, opacity: v, transform: [{ translateY }] }}>{children}</Animated.View>;
@@ -1004,8 +1004,8 @@ export default function App() {
       return;
     }
     Animated.parallel([
-      Animated.timing(splashFade, { toValue: 0, duration: MOTION.fadeOut, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-      Animated.timing(contentFade, { toValue: 1, duration: MOTION.fadeIn, delay: MOTION.overlap, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(splashFade, { toValue: 0, duration: MOTION.fadeOut, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(contentFade, { toValue: 1, duration: MOTION.fadeIn, delay: MOTION.overlap, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
     ]).start(() => setSplashGone(true));
   }, [loaded, splashTimeUp, splashGone, reduceMotion, splashFade, contentFade]);
 

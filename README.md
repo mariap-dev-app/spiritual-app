@@ -117,6 +117,7 @@ None in the screens. The "i" card (author and source) comes later.
 - S5: "Yes!" first, "Nope, I am good for now" below.
 - S8: the timer starts even if its end notification cannot be scheduled.
 - S9b (0.7.5): after saving a reminder, "You are set up!" in the centre for about 3 s (tap to skip), then back to where the reminder was opened from (Home or Settings).
+- Easing (0.7.6): every fade (screen changes, loading cross-fade, buttons, bubble grids) now uses the same ease-in-out curve as "Mousse": slow start, slow end. Durations unchanged.
 - Fix (0.7.4): the timer stepper on S8 had been deleted by mistake in 0.7.1, which caused the error "Property 'Stepper' doesn't exist" after choosing a practice.
 
 ## Design (graphic chart of 25 Nov 2026)
