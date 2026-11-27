@@ -648,7 +648,8 @@ function StateQuestion({ question, onPick }) {
 
 // S4 and S16: optional emotion within the chosen group. Always 3 bubbles per row: the
 // bubble size follows the screen width (at most 100 px).
-function SpecifyEmotion({ groupId, onPick }) {
+// skipGap: space between the bubbles and Skip (32 px on S4, 16 px on S16, 27 Nov).
+function SpecifyEmotion({ groupId, onPick, skipGap = 32 }) {
   const group = groupById(groupId);
   const { width } = useWindowDimensions();
   const gap = 16;
@@ -661,7 +662,7 @@ function SpecifyEmotion({ groupId, onPick }) {
           <Bubble key={e} label={e} groupId={group.id} colors={group.colors} size={size} fontSize={12} onPress={() => onPick(e)} />
         ))}
       </View>
-      <View style={styles.after}>
+      <View style={[styles.after, { marginTop: skipGap }]}>
         <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
       </View>
     </>
@@ -1650,6 +1651,7 @@ export default function App() {
         <Screen onBack={goHome} centered>
           <SpecifyEmotion
             groupId={session.afterGroup}
+            skipGap={16}
             onPick={(emotion) => {
               // ⚙️ Save the check-in after the practice
               updateRecord(session.recordId, { afterGroup: session.afterGroup, afterEmotion: emotion });
