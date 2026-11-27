@@ -91,6 +91,7 @@ export const TEXTS = {
 
   reminderTitle: 'Set up a reminder',
   reminderSave: 'Save reminder',
+  reminderSetTitle: 'You are set up!', // S9b, shown about 3 s after saving a reminder
   reminderTest: 'Test: remind me in 10 seconds',
   reminderCancel: 'Cancel',
   reminderCancelExisting: 'Cancel reminder', // S9a when changing an existing reminder: removes it

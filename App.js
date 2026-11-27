@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.4' },
+        properties: { ...properties, app_version: '0.7.5' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -1009,6 +1009,13 @@ export default function App() {
     ]).start(() => setSplashGone(true));
   }, [loaded, splashTimeUp, splashGone, reduceMotion, splashFade, contentFade]);
 
+  // S9b "You are set up!" (27 Nov): stays about 3 s, then goes on to where the reminder was opened from
+  useEffect(() => {
+    if (screen !== 'reminderSet') return undefined;
+    const timer = setTimeout(() => setScreen(reminderReturn), 3000);
+    return () => clearTimeout(timer);
+  }, [screen, reminderReturn]);
+
   // ----- Load saved data, clean up and top up the random reminders -----
   useEffect(() => {
     (async () => {
@@ -1200,7 +1207,7 @@ export default function App() {
     const wasOff = !settingsRef.current.notificationsOn;
     updateSettings({ reminder: { id, at: at.toISOString() }, notificationsOn: true });
     if (wasOff) await updateAndReplan({});
-    setScreen(reminderReturn);
+    setScreen('reminderSet');
   };
 
   const removeReminder = async () => {
@@ -1695,6 +1702,17 @@ export default function App() {
             <Button label={TEXTS.reminderCancel} kind="secondary" onPress={() => setScreen(reminderReturn)} />
           )}
         </Screen>
+      );
+      break;
+
+    // S9b Reminder saved: text in the centre; tapping anywhere also continues
+    case 'reminderSet':
+      body = (
+        <Pressable style={{ flex: 1 }} onPress={() => setScreen(reminderReturn)}>
+          <Screen centered scroll={false}>
+            <Title>{TEXTS.reminderSetTitle}</Title>
+          </Screen>
+        </Pressable>
       );
       break;
 
