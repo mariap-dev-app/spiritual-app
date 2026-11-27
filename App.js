@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.3' },
+        properties: { ...properties, app_version: '0.7.4' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -665,6 +665,24 @@ function SpecifyEmotion({ groupId, onPick }) {
         <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
       </View>
     </>
+  );
+}
+
+// Timer stepper (S8): round − / + buttons, value and label below.
+function Stepper({ label, value, onMinus, onPlus }) {
+  return (
+    <View style={styles.stepper}>
+      <Pressable onPress={onMinus} style={styles.stepButton}>
+        <Text style={styles.stepButtonText}>−</Text>
+      </Pressable>
+      <View style={{ alignItems: 'center', minWidth: 90 }}>
+        <Text style={styles.stepValue}>{value}</Text>
+        {label ? <Text style={styles.small}>{label}</Text> : null}
+      </View>
+      <Pressable onPress={onPlus} style={styles.stepButton}>
+        <Text style={styles.stepButtonText}>+</Text>
+      </Pressable>
+    </View>
   );
 }
 
