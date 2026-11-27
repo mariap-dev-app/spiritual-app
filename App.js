@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.5.1' },
+        properties: { ...properties, app_version: '0.5.2' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -461,7 +461,7 @@ function Background() {
   );
 }
 
-// Every screen: gradient background with blobs, then a top bar with "‹ Home" on the left
+// Every screen: a top bar with "‹ Home" on the left
 // (or another link, such as "Menu" on Home) and an optional action on the right.
 // centered: the text block sits in the middle, slightly above the exact centre
 // (screens 08 to 12 and 15 in Figma).
@@ -477,7 +477,6 @@ function Screen({ children, onBack, left, right, centered = false, after, scroll
   );
   return (
     <View style={styles.screen}>
-      <Background />
       <View style={styles.topBar}>
         {left ||
           (onBack ? (
@@ -882,7 +881,10 @@ export default function App() {
   // Which practice's steps have finished appearing (S6, S8), so the buttons can show
   const [stepsDoneFor, setStepsDoneFor] = useState(null);
   const [splashTimeUp, setSplashTimeUp] = useState(false);
-  const splashFade = useRef(new Animated.Value(0)).current;
+  const splashFade = useRef(new Animated.Value(0)).current; // app name on the loading screen
+  const contentFade = useRef(new Animated.Value(0)).current; // first screen, revealed under it
+  const [splashGone, setSplashGone] = useState(false);
+  const reduceMotion = useReduceMotion();
 
   const checkinsRef = useRef([]);
   const settingsRef = useRef(DEFAULT_SETTINGS);
@@ -896,6 +898,23 @@ export default function App() {
     const timer = setTimeout(() => setSplashTimeUp(true), 2000);
     return () => clearTimeout(timer);
   }, [splashFade]);
+
+  // E1 → first screen: cross-fade (27 Nov). The background and blobs stay in place (they
+  // are drawn once for the whole app); the app name fades out while the first screen
+  // fades in and rises 8 px, as the practice steps do.
+  useEffect(() => {
+    if (!loaded || !splashTimeUp || splashGone) return;
+    if (reduceMotion) {
+      splashFade.setValue(0);
+      contentFade.setValue(1);
+      setSplashGone(true);
+      return;
+    }
+    Animated.parallel([
+      Animated.timing(splashFade, { toValue: 0, duration: 600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(contentFade, { toValue: 1, duration: 800, delay: 200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+    ]).start(() => setSplashGone(true));
+  }, [loaded, splashTimeUp, splashGone, reduceMotion, splashFade, contentFade]);
 
   // ----- Load saved data, clean up and top up the random reminders -----
   useEffect(() => {
@@ -1142,24 +1161,10 @@ export default function App() {
     setScreen('home');
   };
 
-  if (!loaded || !splashTimeUp) {
-    return (
-      <>
-        <StatusBar style="light" />
-        <View style={styles.screen}>
-          <Background />
-          <View style={styles.splash}>
-            <Animated.Text style={[styles.splashTitle, { opacity: splashFade }]}>{APP_NAME}</Animated.Text>
-          </View>
-        </View>
-      </>
-    );
-  }
-
   const group = session.group ? groupById(session.group) : null;
   let body = null;
 
-  switch (screen) {
+  switch (loaded ? screen : null) {
     // S0 Welcome and short presentation of the method
     case 'welcome':
       body = (
@@ -1664,11 +1669,23 @@ export default function App() {
       );
   }
 
+  const contentRise = contentFade.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
   return (
-    <>
+    <View style={styles.root}>
       <StatusBar style="light" />
-      {body}
-    </>
+      {/* One background for every screen, so it never restarts when the screen changes */}
+      <Background />
+      {loaded && splashTimeUp ? (
+        <Animated.View style={{ flex: 1, opacity: contentFade, transform: [{ translateY: contentRise }] }}>
+          {body}
+        </Animated.View>
+      ) : null}
+      {!splashGone ? (
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.splash]}>
+          <Animated.Text style={[styles.splashTitle, { opacity: splashFade }]}>{APP_NAME}</Animated.Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -1702,7 +1719,8 @@ const G = {
 const SERIF = 'Georgia';
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: G.background[1], paddingTop: 56 },
+  root: { flex: 1, backgroundColor: G.background[1] },
+  screen: { flex: 1, paddingTop: 56 },
   content: { paddingHorizontal: 28, paddingBottom: 48 },
   topBar: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

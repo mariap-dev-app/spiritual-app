@@ -90,6 +90,11 @@ None in the screens. The "i" card (author and source) comes later.
 - Mood tracker: days coloured by consistency (light pink = 3 or more check-ins, dark berry = 1 or 2); one row per day with check-ins that opens to show them.
 - Final S5 explanations from Notion (table 2).
 
+## Changes of 27 Nov 2026
+
+- Loading screen → first screen: cross-fade. The app name fades out (0.6 s) while the first screen fades in and rises 8 px (0.8 s). No fade with "Reduce motion" on.
+- The background and blobs are drawn once for the whole app, so they no longer restart when the screen changes.
+
 ## Design (graphic chart of 25 Nov 2026)
 
 - Background: vertical gradient #3A2B52 → #42323C → #3A2A20, with four soft organic berry blobs (radial gradients) that drift up and down by 40 px, sway slightly and grow by 6 % over an 18 s cycle. Still when "Reduce motion" is on.
