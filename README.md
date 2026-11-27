@@ -111,6 +111,12 @@ None in the screens. The "i" card (author and source) comes later.
 - S9a: only two buttons: "Save reminder", and "Cancel" for a new reminder or "Cancel reminder" (removes it) when changing an existing one; "‹ Home" leaves without changes.
 - S0b text: "Each reminder comes at a random time within the period, from the time you choose below. You can change this later in Settings."
 
+### Comments of 27 Nov (third round)
+
+- Loading screen: blobs at their normal speed; "Mousse" appears after 1 s with the same slow fade as the other animations (1.4 s), and stays about 0.8 s before the cross-fade.
+- S5: "Yes!" first, "Nope, I am good for now" below.
+- S8: the timer starts even if its end notification cannot be scheduled (before, an error there stopped Start from working).
+
 ## Design (graphic chart of 25 Nov 2026)
 
 - Background: vertical gradient #3A2B52 → #42323C → #3A2A20, with four soft organic berry blobs (radial gradients) that drift up and down by 40 px, sway slightly and grow by 6 % over an 18 s cycle. Still when "Reduce motion" is on.

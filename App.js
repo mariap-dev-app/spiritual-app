@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.2' },
+        properties: { ...properties, app_version: '0.7.3' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -968,8 +968,9 @@ export default function App() {
 
   // ----- E1 Loading screen: about 2 seconds at each opening -----
   useEffect(() => {
-    Animated.timing(splashFade, { toValue: 1, duration: 1600, delay: 300, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
-    const timer = setTimeout(() => setSplashTimeUp(true), 2400);
+    // "Mousse" appears after 1 s, with the same slow fade as the other animations
+    Animated.timing(splashFade, { toValue: 1, duration: MOTION.fadeIn, delay: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }).start();
+    const timer = setTimeout(() => setSplashTimeUp(true), 3200); // 1 s + 1.4 s fade + 0.8 s to read it
     return () => clearTimeout(timer);
   }, [splashFade]);
 
@@ -1091,16 +1092,22 @@ export default function App() {
     const minutes = session.timerMinutes;
     const endAt = Date.now() + minutes * 60 * 1000;
     let notificationId = null;
-    if (settings.notificationsOn && (await hasPermission())) {
-      notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: TEXTS.timerNotificationTitle,
-          body: TEXTS.timerNotificationBody,
-          sound: settings.sound,
-          data: { kind: 'timerEnd', recordId: session.recordId },
-        },
-        trigger: { type: INTERVAL_TRIGGER, seconds: Math.max(1, minutes * 60), repeats: false },
-      });
+    // The timer must start even if the end notification cannot be scheduled
+    // (permission refused, or a change in the notifications library).
+    try {
+      if (settings.notificationsOn && (await hasPermission())) {
+        notificationId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: TEXTS.timerNotificationTitle,
+            body: TEXTS.timerNotificationBody,
+            sound: settings.sound,
+            data: { kind: 'timerEnd', recordId: session.recordId },
+          },
+          trigger: { type: INTERVAL_TRIGGER, seconds: Math.max(1, minutes * 60), repeats: false },
+        });
+      }
+    } catch (e) {
+      notificationId = null;
     }
     updateRecord(session.recordId, { timerMinutes: minutes });
     setSession((s) => ({ ...s, timerEndAt: endAt, timerStartAt: Date.now(), timerNotificationId: notificationId }));
@@ -1126,7 +1133,7 @@ export default function App() {
   // Stop / leaves → S1
   const stopTimer = async () => {
     if (session.timerNotificationId) {
-      await Notifications.cancelScheduledNotificationAsync(session.timerNotificationId);
+      await Notifications.cancelScheduledNotificationAsync(session.timerNotificationId).catch(() => {});
     }
     const spent = session.timerStartAt ? (Date.now() - session.timerStartAt) / 1000 : 0;
     t('practice_stopped', { minutes_spent: Math.round(spent / 60) });
@@ -1432,8 +1439,8 @@ export default function App() {
           centered
           after={
             <>
-              <Button label={TEXTS.answerNope} kind="secondary" onPress={chooseQuick} />
               <Button label={TEXTS.answerYes} onPress={() => setScreen('time')} />
+              <Button label={TEXTS.answerNope} kind="secondary" onPress={chooseQuick} />
             </>
           }
         >
@@ -1772,7 +1779,7 @@ export default function App() {
     <View style={styles.root}>
       <StatusBar style="light" />
       {/* One background for every screen, so it never restarts when the screen changes */}
-      <Background fast={!splashGone && !(loaded && splashTimeUp)} />
+      <Background />
       {loaded && splashTimeUp ? (
         <Animated.View style={{ flex: 1, opacity: contentFade, transform: [{ translateY: contentRise }] }}>
           <ScreenFade
@@ -1790,12 +1797,7 @@ export default function App() {
       ) : null}
       {!splashGone ? (
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.splash]}>
-          <Animated.Text
-            style={[
-              styles.splashTitle,
-              { opacity: splashFade, transform: [{ scale: splashFade.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }] },
-            ]}
-          >
+          <Animated.Text style={[styles.splashTitle, { opacity: splashFade }]}>
             {APP_NAME}
           </Animated.Text>
         </View>
