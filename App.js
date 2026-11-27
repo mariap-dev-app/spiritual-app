@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.5.2' },
+        properties: { ...properties, app_version: '0.6.0' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -350,22 +350,44 @@ function Bubble({ label, groupId, colors, size = 130, fontSize = 16, onPress }) 
   );
 }
 
+// Transition timings (27 Nov 2026, calmer): one set for the whole app.
+const MOTION = {
+  fadeOut: 1200, // text or screen going away
+  fadeIn: 1400, // text or screen arriving
+  overlap: 600, // the arriving text starts while the leaving one is halfway out
+  appear: 1600, // mood bubbles appearing after one breath in
+  breathIn: 4000,
+  breathOut: 6000,
+  rise: 8, // px an arriving element rises while it fades in
+};
+
 // Main bubble: 220 px organic berry shape, no ring. It breathes: grows by 10 % on the
 // breath in (4 s) and returns on the breath out (6 s). Still when "Reduce motion" is on.
-function BreathingBubble({ size = 220 }) {
+// restartKey: when it changes, the breath starts again from a breath in (S1 → S2).
+function BreathingBubble({ size = 220, restartKey }) {
   const scale = useRef(new Animated.Value(1)).current;
   const still = useReduceMotion();
   useEffect(() => {
     if (still) return undefined;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scale, { toValue: 1.1, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 6000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [scale, still]);
+    const run = () =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scale, { toValue: 1.1, duration: MOTION.breathIn, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 1, duration: MOTION.breathOut, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ])
+      );
+    let loop = null;
+    // Back to the resting size gently (0.4 s), then breathe in at once
+    const settle = Animated.timing(scale, { toValue: 1, duration: 400, easing: Easing.out(Easing.ease), useNativeDriver: true });
+    settle.start(() => {
+      loop = run();
+      loop.start();
+    });
+    return () => {
+      settle.stop();
+      if (loop) loop.stop();
+    };
+  }, [scale, still, restartKey]);
   return (
     <Animated.View
       style={[
@@ -495,14 +517,14 @@ function Screen({ children, onBack, left, right, centered = false, after, scroll
   );
 }
 
-// Reveals its content like a practice step (fade in and rise 8 px over 0.7 s); used for the
+// Reveals its content like a practice step (fade in and rise 8 px over 1.4 s); used for the
 // timer and buttons that come after the steps on S6 and S8.
 function FadeIn({ visible, children }) {
   const v = useRef(new Animated.Value(visible ? 1 : 0)).current;
   useEffect(() => {
-    Animated.timing(v, { toValue: visible ? 1 : 0, duration: 700, useNativeDriver: true }).start();
+    Animated.timing(v, { toValue: visible ? 1 : 0, duration: MOTION.fadeIn, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
   }, [visible, v]);
-  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
   return (
     <Animated.View style={{ opacity: v, transform: [{ translateY }] }} pointerEvents={visible ? 'auto' : 'none'}>
       {children}
@@ -510,11 +532,99 @@ function FadeIn({ visible, children }) {
   );
 }
 
+// Shows `on` content when active, fading out (1.2 s) or in (1.4 s, after a 0.6 s overlap).
+function CrossFade({ active, children, style }) {
+  const v = useRef(new Animated.Value(active ? 1 : 0)).current;
+  const still = useReduceMotion();
+  useEffect(() => {
+    if (still) {
+      v.setValue(active ? 1 : 0);
+      return;
+    }
+    Animated.timing(v, {
+      toValue: active ? 1 : 0,
+      duration: active ? MOTION.fadeIn : MOTION.fadeOut,
+      delay: active ? MOTION.overlap : 0,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [active, v, still]);
+  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [active ? MOTION.rise * 0.75 : -MOTION.rise * 0.75, 0] });
+  return (
+    <Animated.View pointerEvents={active ? 'auto' : 'none'} style={[style, { opacity: v, transform: [{ translateY }] }]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+// Top-left link on Home and the check-in: "Menu" cross-fades into "‹ Home".
+function StageTopLink({ phase, onMenu, onHome }) {
+  return (
+    <View style={{ minWidth: 80, height: 22 }}>
+      <CrossFade active={phase === 'home'} style={StyleSheet.absoluteFill}>
+        <Pressable onPress={onMenu} hitSlop={8}>
+          <Text style={styles.backText}>{TEXTS.menuLink}</Text>
+        </Pressable>
+      </CrossFade>
+      <CrossFade active={phase === 'checkin'} style={StyleSheet.absoluteFill}>
+        <Pressable onPress={onHome} hitSlop={8}>
+          <Text style={styles.backText}>‹ Home</Text>
+        </Pressable>
+      </CrossFade>
+    </View>
+  );
+}
+
+// S1 + S2/S3 in one place (27 Nov): same layout for Home and the check-in. Tapping the
+// bubble keeps everything in place: the text above the bubble cross-fades, the bubble starts
+// a breath in at once, and the four state bubbles appear as the breath in ends.
+function CheckinStage({ phase, question, onTapBubble, onPick }) {
+  const fade = useRef(new Animated.Value(0)).current;
+  const still = useReduceMotion();
+  useEffect(() => {
+    if (phase !== 'checkin') {
+      fade.setValue(0);
+      return undefined;
+    }
+    if (still) {
+      fade.setValue(1);
+      return undefined;
+    }
+    const a = Animated.timing(fade, { toValue: 1, duration: MOTION.appear, delay: MOTION.breathIn, easing: Easing.out(Easing.ease), useNativeDriver: true });
+    a.start();
+    return () => a.stop();
+  }, [phase, fade, still]);
+  const rise = fade.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
+  return (
+    <>
+      <View style={styles.stageTitles}>
+        <CrossFade active={phase === 'home'} style={StyleSheet.absoluteFill}>
+          <Title>{TEXTS.homeTap}</Title>
+        </CrossFade>
+        <CrossFade active={phase === 'checkin'} style={StyleSheet.absoluteFill}>
+          <Title>{question}</Title>
+        </CrossFade>
+      </View>
+      <Pressable disabled={phase !== 'home'} onPress={onTapBubble}>
+        <BreathingBubble restartKey={phase} />
+      </Pressable>
+      <Animated.View
+        pointerEvents={phase === 'checkin' ? 'auto' : 'none'}
+        style={[styles.bubbleGrid, styles.bubbleGrid2, { opacity: fade, transform: [{ translateY: rise }] }]}
+      >
+        {GROUPS.map((g) => (
+          <Bubble key={g.id} label={g.label} groupId={g.id} colors={g.colors} onPress={() => onPick(g.id)} />
+        ))}
+      </Animated.View>
+    </>
+  );
+}
+
 // S2/S3 and S15/S15a: breathing question, then the 4 state bubbles appear.
 function StateQuestion({ question, onPick }) {
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fade, { toValue: 1, duration: 800, delay: 4000, useNativeDriver: true }).start();
+    Animated.timing(fade, { toValue: 1, duration: MOTION.appear, delay: MOTION.breathIn, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
   }, [fade]);
   return (
     <>
@@ -549,10 +659,10 @@ function SpecifyEmotion({ groupId, onPick }) {
 }
 
 // Numbered practice steps (S6, S8), in white. They appear one by one: the first after
-// 0.5 s, then one every 1.5 s, each fading in and rising slightly. onDone runs after the
+// 0.6 s, then one every 1.8 s (1.4 s fade), each fading in and rising slightly. onDone runs after the
 // last one. With "Reduce motion" on, all steps show at once.
-const STEP_FIRST_MS = 500;
-const STEP_EVERY_MS = 1500;
+const STEP_FIRST_MS = 600;
+const STEP_EVERY_MS = 1800;
 
 function StepLine({ text, delay, still }) {
   const v = useRef(new Animated.Value(still ? 1 : 0)).current;
@@ -561,7 +671,7 @@ function StepLine({ text, delay, still }) {
       v.setValue(1);
       return undefined;
     }
-    const a = Animated.timing(v, { toValue: 1, duration: 700, delay, useNativeDriver: true });
+    const a = Animated.timing(v, { toValue: 1, duration: MOTION.fadeIn, delay, easing: Easing.out(Easing.ease), useNativeDriver: true });
     a.start();
     return () => a.stop();
   }, [v, delay, still]);
@@ -865,6 +975,26 @@ function MoodTracker({ checkins }) {
   );
 }
 
+// Every screen change fades the new screen in (1.4 s) and lets it rise 8 px, over the
+// background that stays in place. Home and the check-in share one key: no fade between them.
+function ScreenFadeInner({ children }) {
+  const v = useRef(new Animated.Value(0)).current;
+  const still = useReduceMotion();
+  useEffect(() => {
+    if (still) {
+      v.setValue(1);
+      return;
+    }
+    Animated.timing(v, { toValue: 1, duration: MOTION.fadeIn, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+  }, [v, still]);
+  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
+  return <Animated.View style={{ flex: 1, opacity: v, transform: [{ translateY }] }}>{children}</Animated.View>;
+}
+
+function ScreenFade({ screenKey, children }) {
+  return <ScreenFadeInner key={screenKey}>{children}</ScreenFadeInner>;
+}
+
 // ---------- App ----------
 
 export default function App() {
@@ -894,7 +1024,7 @@ export default function App() {
 
   // ----- E1 Loading screen: about 2 seconds at each opening -----
   useEffect(() => {
-    Animated.timing(splashFade, { toValue: 1, duration: 900, useNativeDriver: true }).start();
+    Animated.timing(splashFade, { toValue: 1, duration: MOTION.fadeIn, useNativeDriver: true }).start();
     const timer = setTimeout(() => setSplashTimeUp(true), 2000);
     return () => clearTimeout(timer);
   }, [splashFade]);
@@ -911,8 +1041,8 @@ export default function App() {
       return;
     }
     Animated.parallel([
-      Animated.timing(splashFade, { toValue: 0, duration: 600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-      Animated.timing(contentFade, { toValue: 1, duration: 800, delay: 200, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(splashFade, { toValue: 0, duration: MOTION.fadeOut, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(contentFade, { toValue: 1, duration: MOTION.fadeIn, delay: MOTION.overlap, easing: Easing.out(Easing.ease), useNativeDriver: true }),
     ]).start(() => setSplashGone(true));
   }, [loaded, splashTimeUp, splashGone, reduceMotion, splashFade, contentFade]);
 
@@ -1234,25 +1364,37 @@ export default function App() {
       );
       break;
 
-    // S1 Home (Round 3): "Menu" link on the left, the bubble at the same height as the
-    // check-in bubble, and the prompt as the only text.
+    // S1 Home and S2 + S3 check-in share one stage, so the change happens in place.
     case 'home':
+    case 'checkin': {
+      const phase = screen === 'home' ? 'home' : 'checkin';
       body = (
         <Screen
           left={
-            <Pressable onPress={() => setScreen('menu')} hitSlop={8}>
-              <Text style={styles.backText}>{TEXTS.menuLink}</Text>
-            </Pressable>
+            <StageTopLink
+              phase={phase}
+              onMenu={() => setScreen('menu')}
+              onHome={goHome}
+            />
           }
         >
-          <View style={styles.titleSpace} />
-          <Pressable onPress={() => { setSession({ source: 'home' }); setScreen('checkin'); }}>
-            <BreathingBubble />
-          </Pressable>
-          <Text style={[styles.body, styles.center]}>{TEXTS.homeTap}</Text>
+          <CheckinStage
+            phase={phase}
+            question={TEXTS.checkInQuestion}
+            onTapBubble={() => {
+              setSession({ source: 'home' });
+              setScreen('checkin');
+            }}
+            onPick={(groupId) => {
+              t('checkin_started', { source: session.source || 'home' });
+              setSession((s) => ({ source: s.source || 'home', group: groupId, startedAt: new Date().toISOString() }));
+              setScreen('specify');
+            }}
+          />
         </Screen>
       );
       break;
+    }
 
     // S19 Menu: Mood tracker, Journaling, Vision board, Settings
     case 'menu':
@@ -1280,22 +1422,6 @@ export default function App() {
               </Pressable>
             ))}
           </View>
-        </Screen>
-      );
-      break;
-
-    // S2 + S3: question, then 4 states
-    case 'checkin':
-      body = (
-        <Screen onBack={goHome}>
-          <StateQuestion
-            question={TEXTS.checkInQuestion}
-            onPick={(groupId) => {
-              t('checkin_started', { source: session.source || 'home' });
-              setSession((s) => ({ source: s.source || 'home', group: groupId, startedAt: new Date().toISOString() }));
-              setScreen('specify');
-            }}
-          />
         </Screen>
       );
       break;
@@ -1677,7 +1803,17 @@ export default function App() {
       <Background />
       {loaded && splashTimeUp ? (
         <Animated.View style={{ flex: 1, opacity: contentFade, transform: [{ translateY: contentRise }] }}>
-          {body}
+          <ScreenFade
+            screenKey={
+              screen === 'home' || screen === 'checkin'
+                ? 'stage'
+                : screen === 'technique'
+                ? `technique-${session.timerEndAt ? 'running' : 'setup'}`
+                : screen
+            }
+          >
+            {body}
+          </ScreenFade>
         </Animated.View>
       ) : null}
       {!splashGone ? (
@@ -1735,7 +1871,8 @@ const styles = StyleSheet.create({
   },
   titleSmallSize: { fontSize: 20, lineHeight: 28 },
   subtitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text, marginTop: 8, marginBottom: 4 },
-  titleSpace: { height: 88 }, // height of a two-line title, so the Home bubble sits where the check-in bubble is
+  titleSpace: { height: 88 },
+  stageTitles: { height: 96 }, // room for a two-line title (24 + 64 + 8) above the main bubble
   body: { fontSize: 16, lineHeight: 24, color: C.text, marginVertical: 6 },
   center: { textAlign: 'center' },
   small: { fontSize: 14, lineHeight: 20, color: C.accent },

@@ -92,7 +92,11 @@ None in the screens. The "i" card (author and source) comes later.
 
 ## Changes of 27 Nov 2026
 
-- Loading screen → first screen: cross-fade. The app name fades out (0.6 s) while the first screen fades in and rises 8 px (0.8 s). No fade with "Reduce motion" on.
+- Calmer transitions, one set of timings for the whole app (`MOTION` in App.js): leaving text or screen fades out in 1.2 s; arriving text or screen fades in over 1.4 s, starting 0.6 s after the leaving one, and rises 8 px; mood bubbles appear over 1.6 s after one breath in (4 s). No animation with "Reduce motion" on.
+- Loading screen → first screen: cross-fade with these timings.
+- Home (S1) and the check-in (S2 + S3) share one layout: "Tap the bubble to check in" sits above the bubble, in the title font. Tapping the bubble changes everything in place: the text cross-fades to the check-in question, "Menu" becomes "‹ Home", the bubble starts a breath in at once, and the four state bubbles appear as the breath in ends.
+- Every other screen change fades the new screen in (1.4 s) over the background, which stays in place.
+- Practice steps (S6, S8): first after 0.6 s, then one every 1.8 s, each fading in over 1.4 s; the buttons follow with the same fade.
 - The background and blobs are drawn once for the whole app, so they no longer restart when the screen changes.
 
 ## Design (graphic chart of 25 Nov 2026)
