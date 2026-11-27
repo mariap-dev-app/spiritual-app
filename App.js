@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.0' },
+        properties: { ...properties, app_version: '0.7.1' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -668,70 +668,6 @@ function SpecifyEmotion({ groupId, onPick }) {
   );
 }
 
-// Numbered practice steps (S6, S8), in white. They appear one by one: the first after
-// 0.6 s, then one every 1.8 s (1.4 s fade), each fading in and rising slightly. onDone runs after the
-// last one. With "Reduce motion" on, all steps show at once.
-const STEP_FIRST_MS = 600;
-const STEP_EVERY_MS = 1800;
-
-function StepLine({ text, delay, still }) {
-  const v = useRef(new Animated.Value(still ? 1 : 0)).current;
-  useEffect(() => {
-    if (still) {
-      v.setValue(1);
-      return undefined;
-    }
-    const a = Animated.timing(v, { toValue: 1, duration: MOTION.fadeIn, delay, easing: Easing.out(Easing.ease), useNativeDriver: true });
-    a.start();
-    return () => a.stop();
-  }, [v, delay, still]);
-  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
-  return (
-    <Animated.Text style={[styles.body, { opacity: v, transform: [{ translateY }] }]}>
-      {text}
-    </Animated.Text>
-  );
-}
-
-function Steps({ steps = [], onDone }) {
-  const still = useReduceMotion();
-  useEffect(() => {
-    if (!onDone) return undefined;
-    if (still) {
-      onDone();
-      return undefined;
-    }
-    // The buttons come one step-interval after the last step, like a next step
-    const timer = setTimeout(onDone, STEP_FIRST_MS + steps.length * STEP_EVERY_MS);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [still, steps]);
-  return (
-    <View style={{ alignSelf: 'stretch' }}>
-      {steps.map((step, i) => (
-        <StepLine key={`${i}-${step}`} text={`${i + 1}. ${step}`} delay={STEP_FIRST_MS + i * STEP_EVERY_MS} still={still} />
-      ))}
-    </View>
-  );
-}
-
-function Stepper({ label, value, onMinus, onPlus }) {
-  return (
-    <View style={styles.stepper}>
-      <Pressable onPress={onMinus} style={styles.stepButton}>
-        <Text style={styles.stepButtonText}>−</Text>
-      </Pressable>
-      <View style={{ alignItems: 'center', minWidth: 90 }}>
-        <Text style={styles.stepValue}>{value}</Text>
-        {label ? <Text style={styles.small}>{label}</Text> : null}
-      </View>
-      <Pressable onPress={onPlus} style={styles.stepButton}>
-        <Text style={styles.stepButtonText}>+</Text>
-      </Pressable>
-    </View>
-  );
-}
-
 // One-line setting with a small − / + stepper (Settings: "Starting at", "Reminders stop at").
 function InlineStepper({ label, value, onMinus, onPlus }) {
   return (
@@ -1018,8 +954,6 @@ export default function App() {
   const [message, setMessage] = useState('');
   const [now, setNow] = useState(Date.now());
   const [notifMessage, setNotifMessage] = useState('');
-  // Which practice's steps have finished appearing (S6, S8), so the buttons can show
-  const [stepsDoneFor, setStepsDoneFor] = useState(null);
   const [splashTimeUp, setSplashTimeUp] = useState(false);
   const splashFade = useRef(new Animated.Value(0)).current; // app name on the loading screen
   const contentFade = useRef(new Animated.Value(0)).current; // first screen, revealed under it
@@ -1523,14 +1457,19 @@ export default function App() {
           onBack={goHome}
           centered
           after={
-            <FadeIn visible={stepsDoneFor === `${screen}-${session.recordId}`}>
+            <FadeIn visible>
               <Button label={TEXTS.quickContinue} onPress={() => setScreen('reminderAsk')} />
             </FadeIn>
           }
         >
           <Text style={[styles.body, styles.center]}>{TEXTS.quickIntro}</Text>
           <Title style={{ color: C.accent }}>{session.technique.name}</Title>
-          <Steps steps={session.technique.steps} onDone={() => setStepsDoneFor(`${screen}-${session.recordId}`)} />
+          {/* Steps shown at once, in a card, as on S8 (27 Nov) */}
+          <View style={[styles.card, { marginTop: 16 }]}>
+            {session.technique.steps.map((step, i) => (
+              <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
+            ))}
+          </View>
         </Screen>
       );
       break;

@@ -96,7 +96,7 @@ None in the screens. The "i" card (author and source) comes later.
 - Loading screen → first screen: cross-fade with these timings.
 - Home (S1) and the check-in (S2 + S3) share one layout: "Tap the bubble to check in" sits above the bubble, in the title font. Tapping the bubble changes everything in place: the text cross-fades to the check-in question, "Menu" becomes "‹ Home", the bubble starts a breath in at once, and the four state bubbles appear as the breath in ends.
 - Every other screen change fades the new screen in (1.4 s) over the background, which stays in place.
-- Practice steps (S6, S8): first after 0.6 s, then one every 1.8 s, each fading in over 1.4 s; the buttons follow with the same fade.
+- Practice steps (S6, S8): shown at once in a card since the second round of 27 Nov.
 - The background and blobs are drawn once for the whole app, so they no longer restart when the screen changes.
 
 ### Comments of 27 Nov (second round)
@@ -107,7 +107,7 @@ None in the screens. The "i" card (author and source) comes later.
 - S0b: "Starting at" time on the onboarding screen too, with the text adjusted.
 - S4 and S16: centred and more airy (32 px under the title and above Skip, 16 px between bubbles, still 3 per row).
 - S8a: more airy (more space under the title and between the cards).
-- S8: steps shown at once in a card (like the practice cards on S8a); the timer and Start fade in.
+- S6 and S8: steps shown at once in a card (like the practice cards on S8a); Continue (S6) and the timer and Start (S8) fade in.
 - S9a: only two buttons, "Save reminder" and "Cancel".
 
 ## Design (graphic chart of 25 Nov 2026)
