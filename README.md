@@ -118,6 +118,7 @@ None in the screens. The "i" card (author and source) comes later.
 - S8: the timer starts even if its end notification cannot be scheduled.
 - S9b (0.7.5): after saving a reminder, "You are set up!" in the centre for about 3 s (tap to skip), then back to where the reminder was opened from (Home or Settings).
 - Easing (0.7.6): every fade (screen changes, loading cross-fade, buttons, bubble grids) now uses the same ease-in-out curve as "Mousse": slow start, slow end. Durations unchanged.
+- Test tools (27 Nov): `showTestTools` is `true` for testing ("Reset the app" at the bottom of Settings). Set it back to `false` before the beta.
 - S16 (0.7.7): Skip 16 px under the bubbles (32 px on S4).
 - Settings (0.7.7): "Notifications" centred on the same line as its switch. Grouped in four cards, like the practice cards: Notifications (switch, Sound, Vibration); Daily reminders (frequency, "Starting at", "Reminders stop at"); One-off reminder; Beta feedback. "Reminders stop at" moved into the Daily reminders card, as it only applies to them; the "Quiet hours" heading is no longer shown.
 - Fix (0.7.4): the timer stepper on S8 had been deleted by mistake in 0.7.1, which caused the error "Property 'Stepper' doesn't exist" after choosing a practice.

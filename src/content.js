@@ -15,7 +15,7 @@ export const CONFIG = {
   feedbackUrl: 'https://app.notion.com/p/424ec6d3977a812da179f144632eb312?v=424ec6d3977a81ca8369000ce95a10b0&source=copy_link',
   // Test tools: "Test: remind me in 10 seconds" (S9a) and "Reset the app" (S12).
   // false for the beta build (decided 22 Nov 2026); set to true while testing.
-  showTestTools: false,
+  showTestTools: true, // TODO before the beta: set back to false
 };
 
 // App name: still to confirm. Used in the welcome texts below.
