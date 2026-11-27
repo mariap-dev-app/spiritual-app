@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.6.0' },
+        properties: { ...properties, app_version: '0.7.0' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -358,7 +358,7 @@ const MOTION = {
   appear: 1600, // mood bubbles appearing after one breath in
   breathIn: 4000,
   breathOut: 6000,
-  rise: 8, // px an arriving element rises while it fades in
+  rise: 0, // no movement: content only fades (27 Nov: "use only fading in")
 };
 
 // Main bubble: 220 px organic berry shape, no ring. It breathes: grows by 10 % on the
@@ -430,23 +430,30 @@ function useReduceMotion() {
   return reduce;
 }
 
-function Blob({ left, right, top, width, height, shape, color, from, to, delay, still }) {
+// fast: quicker drift on the loading screen (1.5 s each way instead of 4.5 s). Changing the
+// speed continues from where each blob is, so there is no jump.
+function Blob({ left, right, top, width, height, shape, color, from, to, delay, still, fast }) {
   const t = useRef(new Animated.Value(0)).current;
+  const started = useRef(false);
   useEffect(() => {
     if (still) return undefined;
+    const half = fast ? 1500 : 4500;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(t, { toValue: 1, duration: 4500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(t, { toValue: 0, duration: 4500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 1, duration: half, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 0, duration: half, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     );
-    const timer = setTimeout(() => loop.start(), delay % 4500);
+    const timer = setTimeout(() => {
+      started.current = true;
+      loop.start();
+    }, started.current ? 0 : delay % half);
     return () => {
       clearTimeout(timer);
       loop.stop();
     };
-  }, [still, t, delay]);
-  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [0, -40] });
+  }, [still, t, delay, fast]);
+  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [0, -40] }); // background blobs keep drifting
   const translateX = t.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 10, 0] });
   const scale = t.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
   return (
@@ -471,13 +478,13 @@ function Blob({ left, right, top, width, height, shape, color, from, to, delay, 
   );
 }
 
-function Background() {
+function Background({ fast = false }) {
   const still = useReduceMotion();
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <LinearGradient colors={G.background} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
       {BG_BLOBS.map((b, i) => (
-        <Blob key={i} {...b} still={still} />
+        <Blob key={i} {...b} still={still} fast={fast} />
       ))}
     </View>
   );
@@ -517,12 +524,12 @@ function Screen({ children, onBack, left, right, centered = false, after, scroll
   );
 }
 
-// Reveals its content like a practice step (fade in and rise 8 px over 1.4 s); used for the
+// Fades its content in over 1.4 s (no movement); used for the
 // timer and buttons that come after the steps on S6 and S8.
 function FadeIn({ visible, children }) {
-  const v = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(v, { toValue: visible ? 1 : 0, duration: MOTION.fadeIn, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+    Animated.timing(v, { toValue: visible ? 1 : 0, duration: MOTION.fadeIn, delay: visible ? MOTION.overlap : 0, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
   }, [visible, v]);
   const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
   return (
@@ -644,16 +651,19 @@ function StateQuestion({ question, onPick }) {
 function SpecifyEmotion({ groupId, onPick }) {
   const group = groupById(groupId);
   const { width } = useWindowDimensions();
-  const size = Math.min(100, Math.floor((width - 2 * 28 - 2 * 12) / 3));
+  const gap = 16;
+  const size = Math.min(100, Math.floor((width - 2 * 28 - 2 * gap) / 3));
   return (
     <>
       <Title>{TEXTS.specifyQuestion}</Title>
-      <View style={styles.bubbleGrid}>
+      <View style={[styles.bubbleGrid, { gap, marginTop: 32, marginBottom: 0 }]}>
         {group.emotions.map((e) => (
           <Bubble key={e} label={e} groupId={group.id} colors={group.colors} size={size} fontSize={12} onPress={() => onPick(e)} />
         ))}
       </View>
-      <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
+      <View style={styles.after}>
+        <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
+      </View>
     </>
   );
 }
@@ -675,7 +685,7 @@ function StepLine({ text, delay, still }) {
     a.start();
     return () => a.stop();
   }, [v, delay, still]);
-  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
   return (
     <Animated.Text style={[styles.body, { opacity: v, transform: [{ translateY }] }]}>
       {text}
@@ -975,7 +985,7 @@ function MoodTracker({ checkins }) {
   );
 }
 
-// Every screen change fades the new screen in (1.4 s) and lets it rise 8 px, over the
+// Every screen change fades the new screen in (1.4 s), with no movement, over the
 // background that stays in place. Home and the check-in share one key: no fade between them.
 function ScreenFadeInner({ children }) {
   const v = useRef(new Animated.Value(0)).current;
@@ -1024,8 +1034,8 @@ export default function App() {
 
   // ----- E1 Loading screen: about 2 seconds at each opening -----
   useEffect(() => {
-    Animated.timing(splashFade, { toValue: 1, duration: MOTION.fadeIn, useNativeDriver: true }).start();
-    const timer = setTimeout(() => setSplashTimeUp(true), 2000);
+    Animated.timing(splashFade, { toValue: 1, duration: 1600, delay: 300, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+    const timer = setTimeout(() => setSplashTimeUp(true), 2400);
     return () => clearTimeout(timer);
   }, [splashFade]);
 
@@ -1298,15 +1308,23 @@ export default function App() {
     // S0 Welcome and short presentation of the method
     case 'welcome':
       body = (
-        <Screen centered>
+        <Screen centered after={<Button label={TEXTS.welcomeButton} onPress={() => setScreen('method')} />}>
           <Title>{TEXTS.welcomeTitle}</Title>
           <Text style={[styles.body, styles.center]}>{TEXTS.welcomeBody}</Text>
-          <Text style={[styles.subtitle, { marginTop: 16 }]}>{TEXTS.methodTitle}</Text>
-          {TEXTS.methodSteps.map((step, i) => (
-            <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
-          ))}
-          <View style={{ height: 16 }} />
-          <Button label={TEXTS.welcomeButton} onPress={() => setScreen('permission')} />
+        </Screen>
+      );
+      break;
+
+    // S00 How it works (split from S0, 27 Nov)
+    case 'method':
+      body = (
+        <Screen centered after={<Button label={TEXTS.welcomeButton} onPress={() => setScreen('permission')} />}>
+          <Title>{TEXTS.methodTitle}</Title>
+          <View style={styles.card}>
+            {TEXTS.methodSteps.map((step, i) => (
+              <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
+            ))}
+          </View>
         </Screen>
       );
       break;
@@ -1348,6 +1366,15 @@ export default function App() {
             value={settings.frequencyHours}
             onChange={(hours) => updateSettings({ frequencyHours: hours })}
           />
+          {settings.frequencyHours ? (
+            <InlineStepper
+              label={TEXTS.settingsStartingAt}
+              value={`${pad(settings.quietEnd)}:00`}
+              onMinus={() => updateSettings({ quietEnd: Math.max(5, settings.quietEnd - 1) })}
+              onPlus={() => updateSettings({ quietEnd: Math.min(12, settings.quietEnd + 1) })}
+            />
+          ) : null}
+          <View style={{ height: 24 }} />
           <Button
             label={TEXTS.frequencyContinue}
             onPress={async () => {
@@ -1429,7 +1456,7 @@ export default function App() {
     // S4 Do you want to specify?
     case 'specify':
       body = (
-        <Screen onBack={goHome}>
+        <Screen onBack={goHome} centered>
           <SpecifyEmotion
             groupId={session.group}
             onPick={(emotion) => {
@@ -1551,10 +1578,11 @@ export default function App() {
       body = (
         <Screen onBack={goHome} centered>
           <Title>{TEXTS.optionsTitle}</Title>
+          <View style={{ height: 24 }} />
           {session.options.map((tech) => (
             <Pressable
               key={tech.name}
-              style={styles.card}
+              style={[styles.card, { marginVertical: 8 }]}
               onPress={() => {
                 // ⚙️ Save the check-in before the practice
                 const id = newId();
@@ -1597,7 +1625,7 @@ export default function App() {
           onBack={goHome}
           centered
           after={
-            <FadeIn visible={stepsDoneFor === `${screen}-${session.recordId}`}>
+            <FadeIn visible>
               <Stepper
                 value={`${session.timerMinutes} min`}
                 label={TEXTS.timerLabel}
@@ -1609,7 +1637,12 @@ export default function App() {
           }
         >
           <Title style={{ color: C.accent }}>{session.technique.name}</Title>
-          <Steps steps={session.technique.steps} onDone={() => setStepsDoneFor(`${screen}-${session.recordId}`)} />
+          {/* Steps shown at once, in a card like the practice cards on S8a (27 Nov) */}
+          <View style={[styles.card, { marginTop: 16 }]}>
+            {session.technique.steps.map((step, i) => (
+              <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
+            ))}
+          </View>
         </Screen>
       );
       break;
@@ -1643,7 +1676,7 @@ export default function App() {
     // S16 Do you want to specify? (after)
     case 'afterSpecify':
       body = (
-        <Screen onBack={goHome}>
+        <Screen onBack={goHome} centered>
           <SpecifyEmotion
             groupId={session.afterGroup}
             onPick={(emotion) => {
@@ -1683,19 +1716,6 @@ export default function App() {
           />
           {message ? <Text style={styles.warning}>{message}</Text> : null}
           <Button label={TEXTS.reminderSave} onPress={() => saveReminder()} />
-          {settings.reminder ? (
-            <Button
-              label={TEXTS.reminderRemove}
-              kind="link"
-              onPress={async () => {
-                await removeReminder();
-                setScreen(reminderReturn);
-              }}
-            />
-          ) : null}
-          {CONFIG.showTestTools ? (
-            <Button label={TEXTS.reminderTest} kind="link" onPress={() => saveReminder(10)} />
-          ) : null}
           <Button label={TEXTS.reminderCancel} kind="secondary" onPress={() => setScreen(reminderReturn)} />
         </Screen>
       );
@@ -1795,12 +1815,12 @@ export default function App() {
       );
   }
 
-  const contentRise = contentFade.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
+  const contentRise = contentFade.interpolate({ inputRange: [0, 1], outputRange: [MOTION.rise, 0] });
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
       {/* One background for every screen, so it never restarts when the screen changes */}
-      <Background />
+      <Background fast={!splashGone && !(loaded && splashTimeUp)} />
       {loaded && splashTimeUp ? (
         <Animated.View style={{ flex: 1, opacity: contentFade, transform: [{ translateY: contentRise }] }}>
           <ScreenFade
@@ -1818,7 +1838,14 @@ export default function App() {
       ) : null}
       {!splashGone ? (
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.splash]}>
-          <Animated.Text style={[styles.splashTitle, { opacity: splashFade }]}>{APP_NAME}</Animated.Text>
+          <Animated.Text
+            style={[
+              styles.splashTitle,
+              { opacity: splashFade, transform: [{ scale: splashFade.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }] },
+            ]}
+          >
+            {APP_NAME}
+          </Animated.Text>
         </View>
       ) : null}
     </View>

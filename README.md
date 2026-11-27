@@ -99,6 +99,17 @@ None in the screens. The "i" card (author and source) comes later.
 - Practice steps (S6, S8): first after 0.6 s, then one every 1.8 s, each fading in over 1.4 s; the buttons follow with the same fade.
 - The background and blobs are drawn once for the whole app, so they no longer restart when the screen changes.
 
+### Comments of 27 Nov (second round)
+
+- No movement on content anywhere: screens, texts, steps and buttons only fade in (the background blobs still drift).
+- Loading screen: the blobs move three times faster while it shows, then slow down to their normal speed; "Mousse" fades in and grows very slightly (94 % → 100 %).
+- Welcome split in two: S0 (title, text, Continue) and S00 "How it works" (the 4 steps in a card, Continue).
+- S0b: "Starting at" time on the onboarding screen too, with the text adjusted.
+- S4 and S16: centred and more airy (32 px under the title and above Skip, 16 px between bubbles, still 3 per row).
+- S8a: more airy (more space under the title and between the cards).
+- S8: steps shown at once in a card (like the practice cards on S8a); the timer and Start fade in.
+- S9a: only two buttons, "Save reminder" and "Cancel".
+
 ## Design (graphic chart of 25 Nov 2026)
 
 - Background: vertical gradient #3A2B52 → #42323C → #3A2A20, with four soft organic berry blobs (radial gradients) that drift up and down by 40 px, sway slightly and grow by 6 % over an 18 s cycle. Still when "Reduce motion" is on.
