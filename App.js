@@ -1726,7 +1726,7 @@ export default function App() {
           {/* Card 1: notifications in general */}
           <View style={styles.settingsCard}>
             <View style={styles.settingRowTop}>
-              <Text style={[styles.subtitle, styles.cardHeading]}>{TEXTS.settingsNotifications}</Text>
+              <Text style={[styles.subtitle, styles.rowHeading]}>{TEXTS.settingsNotifications}</Text>
               <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.notificationsOn} onValueChange={toggleNotifications} />
             </View>
             {notifMessage ? (
@@ -1966,7 +1966,8 @@ const styles = StyleSheet.create({
   after: { marginTop: 32 },
   settingsCard: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginVertical: 8 },
   cardHeading: { marginTop: 0, marginBottom: 8 },
-  settingRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  settingRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  rowHeading: { marginTop: 0, marginBottom: 0 }, // no extra margin, so the title is centred on its switch
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   splashTitle: { fontFamily: SERIF, fontSize: 44, lineHeight: 52, color: C.text },
   inlineStepper: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 8 },
