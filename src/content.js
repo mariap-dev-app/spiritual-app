@@ -114,15 +114,17 @@ export const TEXTS = {
   settingsOneOffChange: 'Change one-off reminder',
   settingsQuiet: 'Quiet hours',
   settingsStopAt: 'Reminders stop at',
+  settingsFrom: 'From', // Settings, daily reminders: "From 09:00 to 22:00"
+  settingsTo: 'to',
   settingsSound: 'Sound',
-  settingsVibration: 'Vibration at the end of the timer',
+  settingsVibration: 'Vibration', // at the end of the timer
   settingsBeta: 'Beta',
 
   feedbackButton: 'Send feedback',
   feedbackNotSet: 'The feedback form is not set up yet.',
 
   trackerTitle: 'Mood tracker',
-  consistentDay: 'Consistent day (3 or more check-ins)',
+  consistentDay: 'At least 3 check-ins',
   inconsistentDay: '1 or 2 check-ins',
   noCheckin: 'No check-in on this day.',
 };

@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.7' },
+        properties: { ...properties, app_version: '0.7.8' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -687,6 +687,47 @@ function Stepper({ label, value, onMinus, onPlus }) {
   );
 }
 
+// Settings, daily reminders (27 Nov): "From 09:00 to 22:00" on one line. Tapping a time
+// opens a one-column hour picker under the line; tapping it again closes it.
+const FROM_HOURS = [5, 6, 7, 8, 9, 10, 11, 12];
+const TO_HOURS = [18, 19, 20, 21, 22, 23];
+
+function HoursRange({ from, to, onFrom, onTo }) {
+  const [open, setOpen] = useState(null); // 'from' | 'to' | null
+  const hours = open === 'from' ? FROM_HOURS : TO_HOURS;
+  const value = open === 'from' ? from : to;
+  const timePill = (key, h) => (
+    <Pressable
+      onPress={() => setOpen(open === key ? null : key)}
+      style={[styles.timePill, open === key && styles.choiceSelected]}
+      hitSlop={6}
+    >
+      <Text style={styles.stepValue}>{`${pad(h)}:00`}</Text>
+    </Pressable>
+  );
+  return (
+    <>
+      <View style={styles.hoursRange}>
+        <Text style={styles.body}>{TEXTS.settingsFrom}</Text>
+        {timePill('from', from)}
+        <Text style={styles.body}>{TEXTS.settingsTo}</Text>
+        {timePill('to', to)}
+      </View>
+      {open ? (
+        <View style={[styles.wheel, { width: 120, alignSelf: 'center' }]}>
+          <View pointerEvents="none" style={styles.wheelBand} />
+          <WheelColumn
+            key={open}
+            items={hours.map((h) => `${pad(h)}:00`)}
+            index={Math.max(0, hours.indexOf(value))}
+            onChange={(i) => (open === 'from' ? onFrom(hours[i]) : onTo(hours[i]))}
+          />
+        </View>
+      ) : null}
+    </>
+  );
+}
+
 // One-line setting with a small − / + stepper (Settings: "Starting at", "Reminders stop at").
 function InlineStepper({ label, value, onMinus, onPlus }) {
   return (
@@ -881,7 +922,7 @@ function MoodTracker({ checkins }) {
                   (open[k] && count) || emptyDay === k ? styles.calendarSelected : null,
                 ]}
               >
-                <Text style={[styles.calendarDay, consistent && { color: C.onConsistent }]}>{date.getDate()}</Text>
+                <Text style={[styles.calendarDay, consistent ? { color: C.onConsistent } : count ? { color: C.onInconsistent } : null]}>{date.getDate()}</Text>
               </View>
             </Pressable>
           );
@@ -1738,11 +1779,11 @@ export default function App() {
               </>
             ) : null}
             <View style={styles.settingRow}>
-              <Text style={styles.body}>{TEXTS.settingsSound}</Text>
+              <Text style={[styles.body, styles.bold]}>{TEXTS.settingsSound}</Text>
               <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
             </View>
             <View style={[styles.settingRow, { marginBottom: 0 }]}>
-              <Text style={styles.body}>{TEXTS.settingsVibration}</Text>
+              <Text style={[styles.body, styles.bold]}>{TEXTS.settingsVibration}</Text>
               <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
             </View>
           </View>
@@ -1757,17 +1798,11 @@ export default function App() {
             />
             {settings.frequencyHours ? (
               <>
-                <InlineStepper
-                  label={TEXTS.settingsStartingAt}
-                  value={`${pad(settings.quietEnd)}:00`}
-                  onMinus={() => updateAndReplan({ quietEnd: Math.max(5, settings.quietEnd - 1) })}
-                  onPlus={() => updateAndReplan({ quietEnd: Math.min(12, settings.quietEnd + 1) })}
-                />
-                <InlineStepper
-                  label={TEXTS.settingsStopAt}
-                  value={`${pad(settings.quietStart)}:00`}
-                  onMinus={() => updateAndReplan({ quietStart: Math.max(18, settings.quietStart - 1) })}
-                  onPlus={() => updateAndReplan({ quietStart: Math.min(23, settings.quietStart + 1) })}
+                <HoursRange
+                  from={settings.quietEnd}
+                  to={settings.quietStart}
+                  onFrom={(h) => updateAndReplan({ quietEnd: h })}
+                  onTo={(h) => updateAndReplan({ quietStart: h })}
                 />
               </>
             ) : null}
@@ -1865,9 +1900,10 @@ const C = {
   band: 'rgba(239,167,186,0.25)', // picker band, selected option
   picker: 'rgba(42,30,61,0.55)',
   warning: '#F4B6A6',
-  consistent: '#EFA7BA', // mood tracker: consistent day (3 or more check-ins)
-  onConsistent: '#3A2B52', // day number on a consistent day
-  inconsistent: '#72294A', // mood tracker: 1 or 2 check-ins
+  consistent: '#963F62', // mood tracker: at least 3 check-ins (dark berry, 27 Nov)
+  onConsistent: '#FBEFF2', // day number on a consistent day
+  inconsistent: '#EFA7BA', // mood tracker: 1 or 2 check-ins (light pink)
+  onInconsistent: '#3A2B52', // day number on a day with 1 or 2 check-ins
 };
 
 // Gradients
@@ -1966,6 +2002,12 @@ const styles = StyleSheet.create({
   wheelTextSelected: { fontWeight: '600' },
   centered: { flexGrow: 1, justifyContent: 'center', paddingBottom: 120 },
   after: { marginTop: 32 },
+  bold: { fontWeight: '600' },
+  hoursRange: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 8 },
+  timePill: {
+    minHeight: 40, minWidth: 72, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.line,
+    alignItems: 'center', justifyContent: 'center',
+  },
   settingsCard: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginVertical: 8 },
   cardHeading: { marginTop: 0, marginBottom: 8 },
   settingRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
@@ -1978,7 +2020,7 @@ const styles = StyleSheet.create({
   },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   legendSwatch: { width: 14, height: 14, borderRadius: 4 },
-  calendarSelected: { borderWidth: 2, borderColor: C.accent },
+  calendarSelected: { borderWidth: 2, borderColor: C.text }, // white: visible on light and dark days
   calendarDay: { color: C.text, fontSize: 14, fontWeight: '600' },
   entry: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginVertical: 6 },
   entryTitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text },
