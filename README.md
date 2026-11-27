@@ -108,7 +108,8 @@ None in the screens. The "i" card (author and source) comes later.
 - S4 and S16: centred and more airy (32 px under the title and above Skip, 16 px between bubbles, still 3 per row).
 - S8a: more airy (more space under the title and between the cards).
 - S6 and S8: steps shown at once in a card (like the practice cards on S8a); Continue (S6) and the timer and Start (S8) fade in.
-- S9a: only two buttons, "Save reminder" and "Cancel".
+- S9a: only two buttons: "Save reminder", and "Cancel" for a new reminder or "Cancel reminder" (removes it) when changing an existing one; "‹ Home" leaves without changes.
+- S0b text: "Each reminder comes at a random time within the period, from the time you choose below. You can change this later in Settings."
 
 ## Design (graphic chart of 25 Nov 2026)
 

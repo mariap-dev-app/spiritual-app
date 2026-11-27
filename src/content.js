@@ -41,7 +41,7 @@ export const TEXTS = {
 
   frequencyTitle: 'How often should we remind you?',
   frequencyBody:
-    'Each reminder comes at a random time within the period, from the time you choose below and never after 22:00. You can change this later in Settings.',
+    'Each reminder comes at a random time within the period, from the time you choose below. You can change this later in Settings.',
   frequencyOptions: [
     { hours: 3, label: 'Every 3 hours' },
     { hours: 2, label: 'Every 2 hours' },
@@ -93,6 +93,7 @@ export const TEXTS = {
   reminderSave: 'Save reminder',
   reminderTest: 'Test: remind me in 10 seconds',
   reminderCancel: 'Cancel',
+  reminderCancelExisting: 'Cancel reminder', // S9a when changing an existing reminder: removes it
   reminderPast: 'Choose a date and time in the future.',
   reminderNotificationTitle: 'Time to check in',
   reminderNotificationBody: 'Take a deep breath in! How are you feeling?',

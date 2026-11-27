@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.1' },
+        properties: { ...properties, app_version: '0.7.2' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -1655,7 +1655,20 @@ export default function App() {
           />
           {message ? <Text style={styles.warning}>{message}</Text> : null}
           <Button label={TEXTS.reminderSave} onPress={() => saveReminder()} />
-          <Button label={TEXTS.reminderCancel} kind="secondary" onPress={() => setScreen(reminderReturn)} />
+          {/* Two buttons (27 Nov): for a new reminder "Cancel" goes back; for an existing one
+              "Cancel reminder" removes it ("‹ Home" leaves without changes). */}
+          {settings.reminder ? (
+            <Button
+              label={TEXTS.reminderCancelExisting}
+              kind="secondary"
+              onPress={async () => {
+                await removeReminder();
+                setScreen(reminderReturn);
+              }}
+            />
+          ) : (
+            <Button label={TEXTS.reminderCancel} kind="secondary" onPress={() => setScreen(reminderReturn)} />
+          )}
         </Screen>
       );
       break;
