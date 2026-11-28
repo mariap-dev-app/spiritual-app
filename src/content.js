@@ -42,7 +42,7 @@ export const TEXTS = {
 
   frequencyTitle: 'How often should we remind you?',
   frequencyBody:
-    'Each reminder comes at a random time within the period, from the time you choose below. You can change this later in Settings.',
+    'Choose how often you would like to receive reminders to check in with yourself. You can change this later in Settings.',
   frequencyOptions: [
     { hours: 3, label: 'Every 3 hours' },
     { hours: 2, label: 'Every 2 hours' },
@@ -119,7 +119,6 @@ export const TEXTS = {
   settingsFrom: 'From', // Settings, daily reminders: "From 09:00 to 22:00"
   settingsTo: 'to',
   settingsSound: 'Sound',
-  settingsVibration: 'Vibration', // at the end of the timer
   settingsBeta: 'Beta',
 
   feedbackButton: 'Send feedback',

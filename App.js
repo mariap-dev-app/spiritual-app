@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.8.0' },
+        properties: { ...properties, app_version: '0.8.1' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -183,7 +183,6 @@ const DEFAULT_SETTINGS = {
   quietStart: 22,
   quietEnd: 9, // "Starting at" in Settings: first possible reminder of the day
   sound: true,
-  vibration: true,
   randomPlan: [], // planned random reminder times (ISO), for "Next reminder" on Home
   analyticsId: null, // random anonymous ID, not linked to the person
 };
@@ -717,7 +716,7 @@ function Stepper({ label, value, onMinus, onPlus }) {
 const FROM_HOURS = [5, 6, 7, 8, 9, 10, 11, 12];
 const TO_HOURS = [18, 19, 20, 21, 22, 23];
 
-function HoursRange({ from, to, onFrom, onTo }) {
+function HoursRange({ from, to, onFrom, onTo, style }) {
   const [open, setOpen] = useState(null); // 'from' | 'to' | null
   const hours = open === 'from' ? FROM_HOURS : TO_HOURS;
   const value = open === 'from' ? from : to;
@@ -732,7 +731,7 @@ function HoursRange({ from, to, onFrom, onTo }) {
   );
   return (
     <>
-      <View style={styles.hoursRange}>
+      <View style={[styles.hoursRange, style]}>
         <Text style={styles.body}>{TEXTS.settingsFrom}</Text>
         {timePill('from', from)}
         <Text style={styles.body}>{TEXTS.settingsTo}</Text>
@@ -1211,9 +1210,9 @@ export default function App() {
     setNow(Date.now());
   };
 
-  // ⚙️ Timer ends: soft vibration if the app is open (and Vibration is on) → S15
+  // ⚙️ Timer ends: soft vibration if the app is open → S15
   const finishTimer = (recordId, minutes, appOpen) => {
-    if (appOpen && settingsRef.current.vibration) Vibration.vibrate(400);
+    if (appOpen) Vibration.vibrate(400); // no Vibration setting since 28 Nov: notifications follow the iPhone settings
     t('practice_done', { minutes, path: 'yes' });
     updateRecord(recordId, { completed: true, timeSpentSec: minutes * 60 });
     const record = checkinsRef.current.find((c) => c.id === recordId) || {};
@@ -1436,12 +1435,13 @@ export default function App() {
             onChange={(hours) => updateSettings({ frequencyHours: hours })}
           />
           {settings.frequencyHours ? (
-            <InlineStepper
-              label={TEXTS.settingsStartingAt}
-              value={`${pad(settings.quietEnd)}:00`}
-              onMinus={() => updateSettings({ quietEnd: Math.max(5, settings.quietEnd - 1) })}
-              onPlus={() => updateSettings({ quietEnd: Math.min(12, settings.quietEnd + 1) })}
-              style={{ marginTop: 16, marginBottom: 0 }}
+            // "From ... to ..." as in Settings (28 Nov)
+            <HoursRange
+              from={settings.quietEnd}
+              to={settings.quietStart}
+              onFrom={(h) => updateSettings({ quietEnd: h })}
+              onTo={(h) => updateSettings({ quietStart: h })}
+              style={{ justifyContent: 'center' }}
             />
           ) : null}
         </Screen>
@@ -1764,7 +1764,7 @@ export default function App() {
     // S17 Thanks for recording!
     case 'thanks':
       body = (
-        // Title first, as on every screen (27 Nov); the question sits just above the buttons
+        // Title first, as on every screen (27 Nov)
         <Screen
           centered
           after={
@@ -1776,9 +1776,8 @@ export default function App() {
         >
           <Title>{TEXTS.thanksTitle}</Title>
           <Gap h={16} />
-          <Text style={[styles.body, styles.m0, styles.center]}>{TEXTS.thanksBody}</Text>
-          <Gap h={16} />
-          <Text style={[styles.body, styles.m0, styles.center, styles.bold]}>{TEXTS.anotherSessionAsk}</Text>
+          {/* One font for the text before the buttons (28 Nov) */}
+          <Text style={[styles.body, styles.m0, styles.center]}>{`${TEXTS.thanksBody}\n${TEXTS.anotherSessionAsk}`}</Text>
         </Screen>
       );
       break;
@@ -1859,10 +1858,6 @@ export default function App() {
             <View style={styles.cardRow}>
               <Text style={[styles.body, styles.m0, styles.bold]}>{TEXTS.settingsSound}</Text>
               <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
-            </View>
-            <View style={styles.cardRow}>
-              <Text style={[styles.body, styles.m0, styles.bold]}>{TEXTS.settingsVibration}</Text>
-              <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
             </View>
           </View>
 

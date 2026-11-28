@@ -135,6 +135,7 @@ None in the screens. The "i" card (author and source) comes later.
 - S17: "Thanks for recording!" as the title, then "It's consistency that matters!", then the question in Semi Bold above the buttons.
 - S13: month view and legend in one card.
 - Not applied: chevron on the S8a practice cards (declined).
+- 0.8.1: S0b text "Choose how often you would like to receive reminders to check in with yourself. You can change this later in Settings." and "From … to …" as in Settings. S17: "Thanks for recording!" as the title, then one text in the body font: "It's consistency that matters! / Do you want to schedule another session?". Settings: Vibration setting removed; the app always vibrates when the timer ends with the app open; notifications vibrate according to the iPhone settings.
 
 ## Design (graphic chart of 25 Nov 2026)
 
