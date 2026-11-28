@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.8.1' },
+        properties: { ...properties, app_version: '0.8.2' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -1058,8 +1058,9 @@ export default function App() {
   // ----- E1 Loading screen: about 2 seconds at each opening -----
   useEffect(() => {
     // "Mousse" appears after 1 s, with the same slow fade as the other animations
-    Animated.timing(splashFade, { toValue: 1, duration: MOTION.fadeIn, delay: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }).start();
-    const timer = setTimeout(() => setSplashTimeUp(true), 3200); // 1 s + 1.4 s fade + 0.8 s to read it
+    // 28 Nov: slower fade (2.4 s), in the logo's pink
+    Animated.timing(splashFade, { toValue: 1, duration: 2400, delay: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }).start();
+    const timer = setTimeout(() => setSplashTimeUp(true), 4200); // 1 s + 2.4 s fade + 0.8 s to read it
     return () => clearTimeout(timer);
   }, [splashFade]);
 
@@ -2093,7 +2094,7 @@ const styles = StyleSheet.create({
   settingRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowHeading: { marginTop: 0, marginBottom: 0 }, // no extra margin, so the title is centred on its switch
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  splashTitle: { fontFamily: SERIF, fontSize: 44, lineHeight: 52, color: C.text },
+  splashTitle: { fontFamily: SERIF, fontSize: 44, lineHeight: 52, fontWeight: '400', color: C.accent }, // as the logo: serif Regular, pink #EFA7BA
   inlineStepper: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 8 },
   stepButtonSmall: {
     width: 32, height: 32, borderRadius: 16, backgroundColor: C.surfaceStrong, alignItems: 'center', justifyContent: 'center',
