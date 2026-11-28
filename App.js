@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.8.2' },
+        properties: { ...properties, app_version: '0.8.3' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -1420,8 +1420,9 @@ export default function App() {
                   frequency_hours: settingsRef.current.frequencyHours,
                   notifications: settingsRef.current.notificationsOn,
                 });
-                setSession({ source: 'onboarding' });
-                setScreen('checkin');
+                // 28 Nov: after setting the reminders, go to Home (S1)
+                setSession({});
+                setScreen('home');
               }}
             />
           }
@@ -2116,5 +2117,5 @@ const styles = StyleSheet.create({
   },
   choiceSelected: { backgroundColor: C.band, borderColor: C.accent },
   choiceText: { color: C.text, fontSize: 16 },
-  choiceTextSelected: { fontWeight: '600' },
+  choiceTextSelected: {}, // 28 Nov: no bold when selected (it made the labels wrap); the fill and outline show the choice
 });

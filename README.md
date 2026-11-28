@@ -135,6 +135,7 @@ None in the screens. The "i" card (author and source) comes later.
 - S17: "Thanks for recording!" as the title, then "It's consistency that matters!", then the question in Semi Bold above the buttons.
 - S13: month view and legend in one card.
 - Not applied: chevron on the S8a practice cards (declined).
+- 0.8.3: after the reminder frequency (S0b), Continue goes to Home (S1) instead of the check-in. Selected option pills are no longer bold (the label wrapped in Settings); the pink fill and outline show the choice.
 - 0.8.2: loading screen "Mousse" in the logo's style (serif Regular, pink #EFA7BA), fading in slowly over 2.4 s after 1 s; the loading screen lasts about 4.2 s.
 - 0.8.1: S0b text "Choose how often you would like to receive reminders to check in with yourself. You can change this later in Settings." and "From … to …" as in Settings. S17: "Thanks for recording!" as the title, then one text in the body font: "It's consistency that matters! / Do you want to schedule another session?". Settings: Vibration setting removed; the app always vibrates when the timer ends with the app open; notifications vibrate according to the iPhone settings.
 
