@@ -153,7 +153,7 @@ async function track(distinctId, event, properties = {}) {
         api_key: CONFIG.posthogKey,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, app_version: '0.7.8' },
+        properties: { ...properties, app_version: '0.8.0' },
         timestamp: new Date().toISOString(),
       }),
     });
@@ -264,6 +264,27 @@ function Button({ label, onPress, kind = 'primary', disabled }) {
     >
       <Text style={kind === 'secondary' ? styles.buttonTextSecondary : styles.buttonTextLink}>{label}</Text>
     </Pressable>
+  );
+}
+
+// Spacing scale (27 Nov): visible gaps of 16 (title → content, blocks of a group, cards),
+// 32 (content → buttons, bubble → state bubbles), 24 (bubbles → Skip), 12 (stacked buttons,
+// steps). Texts inside screens use styles.m0 so the gaps come only from <Gap>.
+function Gap({ h }) {
+  return <View style={{ height: h }} />;
+}
+
+// Numbered steps (S00, S6, S8): number in pink 14 Semi Bold, text 16, 12 px between steps.
+function Steps({ steps }) {
+  return (
+    <View style={{ gap: 12 }}>
+      {steps.map((step, i) => (
+        <View key={i} style={styles.stepRow}>
+          <Text style={styles.stepNumber}>{i + 1}</Text>
+          <Text style={[styles.body, styles.m0, { flex: 1 }]}>{step}</Text>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -635,7 +656,11 @@ function StateQuestion({ question, onPick }) {
   }, [fade]);
   return (
     <>
-      <Title>{question}</Title>
+      {/* Same layout as the check-in (27 Nov): text area of the same height, so the bubble
+          sits exactly where it was on S2 */}
+      <View style={styles.stageTitles}>
+        <Title>{question}</Title>
+      </View>
       <BreathingBubble />
       <Animated.View style={[styles.bubbleGrid, styles.bubbleGrid2, { opacity: fade }]}>
         {GROUPS.map((g) => (
@@ -648,8 +673,7 @@ function StateQuestion({ question, onPick }) {
 
 // S4 and S16: optional emotion within the chosen group. Always 3 bubbles per row: the
 // bubble size follows the screen width (at most 100 px).
-// skipGap: space between the bubbles and Skip (32 px on S4, 16 px on S16, 27 Nov).
-function SpecifyEmotion({ groupId, onPick, skipGap = 32 }) {
+function SpecifyEmotion({ groupId, onPick }) {
   const group = groupById(groupId);
   const { width } = useWindowDimensions();
   const gap = 16;
@@ -662,8 +686,9 @@ function SpecifyEmotion({ groupId, onPick, skipGap = 32 }) {
           <Bubble key={e} label={e} groupId={group.id} colors={group.colors} size={size} fontSize={12} onPress={() => onPick(e)} />
         ))}
       </View>
-      <View style={[styles.after, { marginTop: skipGap }]}>
-        <Button label={TEXTS.specifySkip} kind="secondary" onPress={() => onPick(null)} />
+      {/* Skip as a pink text link, 24 px under the bubbles (as on S15) */}
+      <View style={{ marginTop: 20 }}>
+        <Button label={TEXTS.specifySkip} kind="link" onPress={() => onPick(null)} />
       </View>
     </>
   );
@@ -729,9 +754,9 @@ function HoursRange({ from, to, onFrom, onTo }) {
 }
 
 // One-line setting with a small − / + stepper (Settings: "Starting at", "Reminders stop at").
-function InlineStepper({ label, value, onMinus, onPlus }) {
+function InlineStepper({ label, value, onMinus, onPlus, style }) {
   return (
-    <View style={styles.inlineStepper}>
+    <View style={[styles.inlineStepper, style]}>
       <Text style={[styles.body, { flex: 1 }]}>{label}</Text>
       <Pressable onPress={onMinus} style={styles.stepButtonSmall} hitSlop={6}>
         <Text style={styles.stepButtonText}>−</Text>
@@ -752,7 +777,7 @@ function Choice({ options, value, onChange }) {
         <Pressable
           key={String(o.value)}
           onPress={() => onChange(o.value)}
-          style={[styles.choice, value === o.value && styles.choiceSelected]}
+          style={[styles.choice, styles.choiceHalf, value === o.value && styles.choiceSelected]}
         >
           <Text style={[styles.choiceText, value === o.value && styles.choiceTextSelected]}>{o.label}</Text>
         </Pressable>
@@ -882,6 +907,9 @@ function MoodTracker({ checkins }) {
   return (
     <>
       <Title>{TEXTS.trackerTitle}</Title>
+      <Gap h={16} />
+      {/* Month view and legend in one card, as in Settings (27 Nov) */}
+      <View style={[styles.card, styles.m0]}>
       <View style={styles.monthRow}>
         <Pressable onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
           <Text style={styles.monthNav}>‹</Text>
@@ -928,6 +956,7 @@ function MoodTracker({ checkins }) {
           );
         })}
       </View>
+      <Gap h={16} />
       <View style={styles.legendRow}>
         <View style={[styles.legendSwatch, { backgroundColor: C.consistent }]} />
         <Text style={styles.small}>{TEXTS.consistentDay}</Text>
@@ -936,8 +965,9 @@ function MoodTracker({ checkins }) {
         <View style={[styles.legendSwatch, { backgroundColor: C.inconsistent }]} />
         <Text style={styles.small}>{TEXTS.inconsistentDay}</Text>
       </View>
-      {emptyDay ? <Text style={[styles.body, { marginTop: 12 }]}>{TEXTS.noCheckin}</Text> : null}
-      <View style={{ marginTop: 12 }}>
+      </View>
+      {emptyDay ? <Text style={[styles.body, styles.m0, { marginTop: 16 }]}>{TEXTS.noCheckin}</Text> : null}
+      <View style={{ marginTop: 16 }}>
         {daysWithCheckins.map((date) => {
           const k = dayKey(date);
           const entries = byDay[k].slice().sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -1318,7 +1348,14 @@ export default function App() {
       body = (
         <Screen centered after={<Button label={TEXTS.welcomeButton} onPress={() => setScreen('method')} />}>
           <Title>{TEXTS.welcomeTitle}</Title>
-          <Text style={[styles.body, styles.center]}>{TEXTS.welcomeBody}</Text>
+          <Gap h={16} />
+          {/* Two short paragraphs, 12 px apart (27 Nov) */}
+          {TEXTS.welcomeBody.split('\n\n').map((para, i) => (
+            <React.Fragment key={i}>
+              {i ? <Gap h={12} /> : null}
+              <Text style={[styles.body, styles.m0, styles.center]}>{para}</Text>
+            </React.Fragment>
+          ))}
         </Screen>
       );
       break;
@@ -1328,10 +1365,9 @@ export default function App() {
       body = (
         <Screen centered after={<Button label={TEXTS.welcomeButton} onPress={() => setScreen('permission')} />}>
           <Title>{TEXTS.methodTitle}</Title>
-          <View style={styles.card}>
-            {TEXTS.methodSteps.map((step, i) => (
-              <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
-            ))}
+          <Gap h={16} />
+          <View style={[styles.card, styles.m0]}>
+            <Steps steps={TEXTS.methodSteps} />
           </View>
         </Screen>
       );
@@ -1340,25 +1376,32 @@ export default function App() {
     // S0a Notification permission request → S0b
     case 'permission':
       body = (
-        <Screen centered>
+        <Screen
+          centered
+          after={
+            <>
+              <Button
+                label={TEXTS.permissionAllow}
+                onPress={async () => {
+                  const ok = await askPermission();
+                  updateSettings({ notificationsOn: ok });
+                  setScreen('frequency');
+                }}
+              />
+              <Button
+                label={TEXTS.permissionLater}
+                kind="secondary"
+                onPress={() => {
+                  updateSettings({ notificationsOn: false });
+                  setScreen('frequency');
+                }}
+              />
+            </>
+          }
+        >
           <Title>{TEXTS.permissionTitle}</Title>
-          <Text style={[styles.body, styles.center, { marginBottom: 16 }]}>{TEXTS.permissionBody}</Text>
-          <Button
-            label={TEXTS.permissionAllow}
-            onPress={async () => {
-              const ok = await askPermission();
-              updateSettings({ notificationsOn: ok });
-              setScreen('frequency');
-            }}
-          />
-          <Button
-            label={TEXTS.permissionLater}
-            kind="secondary"
-            onPress={() => {
-              updateSettings({ notificationsOn: false });
-              setScreen('frequency');
-            }}
-          />
+          <Gap h={16} />
+          <Text style={[styles.body, styles.m0, styles.center]}>{TEXTS.permissionBody}</Text>
         </Screen>
       );
       break;
@@ -1366,9 +1409,27 @@ export default function App() {
     // S0b Reminder frequency → ⚙️ plan random reminders → S2
     case 'frequency':
       body = (
-        <Screen centered>
+        <Screen
+          centered
+          after={
+            <Button
+              label={TEXTS.frequencyContinue}
+              onPress={async () => {
+                await updateAndReplan({ onboarded: true });
+                t('onboarding_done', {
+                  frequency_hours: settingsRef.current.frequencyHours,
+                  notifications: settingsRef.current.notificationsOn,
+                });
+                setSession({ source: 'onboarding' });
+                setScreen('checkin');
+              }}
+            />
+          }
+        >
           <Title small>{TEXTS.frequencyTitle}</Title>
-          <Text style={[styles.body, styles.center]}>{TEXTS.frequencyBody}</Text>
+          <Gap h={16} />
+          <Text style={[styles.body, styles.m0, styles.center]}>{TEXTS.frequencyBody}</Text>
+          <Gap h={16} />
           <Choice
             options={TEXTS.frequencyOptions.map((o) => ({ value: o.hours, label: o.label }))}
             value={settings.frequencyHours}
@@ -1380,21 +1441,9 @@ export default function App() {
               value={`${pad(settings.quietEnd)}:00`}
               onMinus={() => updateSettings({ quietEnd: Math.max(5, settings.quietEnd - 1) })}
               onPlus={() => updateSettings({ quietEnd: Math.min(12, settings.quietEnd + 1) })}
+              style={{ marginTop: 16, marginBottom: 0 }}
             />
           ) : null}
-          <View style={{ height: 24 }} />
-          <Button
-            label={TEXTS.frequencyContinue}
-            onPress={async () => {
-              await updateAndReplan({ onboarded: true });
-              t('onboarding_done', {
-                frequency_hours: settingsRef.current.frequencyHours,
-                notifications: settingsRef.current.notificationsOn,
-              });
-              setSession({ source: 'onboarding' });
-              setScreen('checkin');
-            }}
-          />
         </Screen>
       );
       break;
@@ -1436,7 +1485,7 @@ export default function App() {
       body = (
         <Screen onBack={goHome}>
           <Title>{TEXTS.menuTitle}</Title>
-          <View style={{ marginTop: 8 }}>
+          <View style={{ marginTop: 16 }}>
             {[
               { label: TEXTS.menuTracker, onPress: () => setScreen('tracker') },
               { label: TEXTS.menuJournaling, soon: true },
@@ -1517,8 +1566,10 @@ export default function App() {
               {session.emotion ? ` · ${session.emotion}` : ''}
             </Text>
           </View>
-          <Title>{group.question}</Title>
-          <Text style={[styles.body, styles.center]}>{group.explanation}</Text>
+          <Gap h={16} />
+          <Title style={styles.m0}>{group.question}</Title>
+          <Gap h={16} />
+          <Text style={[styles.body, styles.m0, styles.center]}>{group.explanation}</Text>
         </Screen>
       );
       break;
@@ -1536,13 +1587,13 @@ export default function App() {
             </FadeIn>
           }
         >
-          <Text style={[styles.body, styles.center]}>{TEXTS.quickIntro}</Text>
-          <Title style={{ color: C.accent }}>{session.technique.name}</Title>
-          {/* Steps shown at once, in a card, as on S8 (27 Nov) */}
-          <View style={[styles.card, { marginTop: 16 }]}>
-            {session.technique.steps.map((step, i) => (
-              <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
-            ))}
+          {/* Intro in pink, so the practice name is the only title (27 Nov) */}
+          <Text style={[styles.body, styles.m0, styles.center, { color: C.accent }]}>{TEXTS.quickIntro}</Text>
+          <Gap h={16} />
+          <Title style={[styles.m0, { color: C.accent }]}>{session.technique.name}</Title>
+          <Gap h={16} />
+          <View style={[styles.card, styles.m0]}>
+            <Steps steps={session.technique.steps} />
           </View>
         </Screen>
       );
@@ -1551,10 +1602,17 @@ export default function App() {
     // S9 Do you want to set up a reminder for the next session?
     case 'reminderAsk':
       body = (
-        <Screen onBack={goHome} centered>
+        <Screen
+          onBack={goHome}
+          centered
+          after={
+            <>
+              <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
+              <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
+            </>
+          }
+        >
           <Title small>{TEXTS.reminderAsk}</Title>
-          <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
-          <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
         </Screen>
       );
       break;
@@ -1591,7 +1649,7 @@ export default function App() {
       body = (
         <Screen onBack={goHome} centered>
           <Title>{TEXTS.optionsTitle}</Title>
-          <View style={{ height: 24 }} />
+          <Gap h={24} />
           {session.options.map((tech) => (
             <Pressable
               key={tech.name}
@@ -1650,11 +1708,9 @@ export default function App() {
           }
         >
           <Title style={{ color: C.accent }}>{session.technique.name}</Title>
-          {/* Steps shown at once, in a card like the practice cards on S8a (27 Nov) */}
-          <View style={[styles.card, { marginTop: 16 }]}>
-            {session.technique.steps.map((step, i) => (
-              <Text key={i} style={styles.body}>{`${i + 1}. ${step}`}</Text>
-            ))}
+          <Gap h={16} />
+          <View style={[styles.card, styles.m0]}>
+            <Steps steps={session.technique.steps} />
           </View>
         </Screen>
       );
@@ -1672,16 +1728,18 @@ export default function App() {
               setScreen('afterSpecify');
             }}
           />
-          <Button
-            label={TEXTS.afterSkip}
-            kind="link"
-            onPress={() => {
-              // Skip: the practice stays saved as done, without the after state → S17
-              updateRecord(session.recordId, { afterSkipped: true });
-              t('after_check_skipped');
-              setScreen('thanks');
-            }}
-          />
+          <View style={{ marginTop: 4 }}>
+            <Button
+              label={TEXTS.afterSkip}
+              kind="link"
+              onPress={() => {
+                // Skip: the practice stays saved as done, without the after state → S17
+                updateRecord(session.recordId, { afterSkipped: true });
+                t('after_check_skipped');
+                setScreen('thanks');
+              }}
+            />
+          </View>
         </Screen>
       );
       break;
@@ -1692,7 +1750,6 @@ export default function App() {
         <Screen onBack={goHome} centered>
           <SpecifyEmotion
             groupId={session.afterGroup}
-            skipGap={16}
             onPick={(emotion) => {
               // ⚙️ Save the check-in after the practice
               updateRecord(session.recordId, { afterGroup: session.afterGroup, afterEmotion: emotion });
@@ -1707,11 +1764,21 @@ export default function App() {
     // S17 Thanks for recording!
     case 'thanks':
       body = (
-        <Screen centered>
-          <Text style={[styles.body, styles.center]}>{TEXTS.thanksBody}</Text>
-          <Title small>{TEXTS.anotherSessionAsk}</Title>
-          <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
-          <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
+        // Title first, as on every screen (27 Nov); the question sits just above the buttons
+        <Screen
+          centered
+          after={
+            <>
+              <Button label={TEXTS.yes} onPress={() => openReminder('home')} />
+              <Button label={TEXTS.no} kind="secondary" onPress={goHome} />
+            </>
+          }
+        >
+          <Title>{TEXTS.thanksTitle}</Title>
+          <Gap h={16} />
+          <Text style={[styles.body, styles.m0, styles.center]}>{TEXTS.thanksBody}</Text>
+          <Gap h={16} />
+          <Text style={[styles.body, styles.m0, styles.center, styles.bold]}>{TEXTS.anotherSessionAsk}</Text>
         </Screen>
       );
       break;
@@ -1721,6 +1788,7 @@ export default function App() {
       body = (
         <Screen onBack={goHome}>
           <Title>{TEXTS.reminderTitle}</Title>
+          <Gap h={8} />
           <ReminderPicker
             value={reminderDraft}
             onChange={(d) => {
@@ -1729,6 +1797,7 @@ export default function App() {
             }}
           />
           {message ? <Text style={styles.warning}>{message}</Text> : null}
+          <Gap h={18} />
           <Button label={TEXTS.reminderSave} onPress={() => saveReminder()} />
           {/* Two buttons (27 Nov): for a new reminder "Cancel" goes back; for an existing one
               "Cancel reminder" removes it ("‹ Home" leaves without changes). */}
@@ -1754,6 +1823,14 @@ export default function App() {
         <Pressable style={{ flex: 1 }} onPress={() => setScreen(reminderReturn)}>
           <Screen centered scroll={false}>
             <Title>{TEXTS.reminderSetTitle}</Title>
+            {settings.reminder ? (
+              <>
+                <Gap h={16} />
+                <Text style={[styles.body, styles.m0, styles.center, { color: C.accent }]}>
+                  {formatReminder(settings.reminder.at)}
+                </Text>
+              </>
+            ) : null}
           </Screen>
         </Pressable>
       );
@@ -1764,6 +1841,7 @@ export default function App() {
       body = (
         <Screen onBack={goHome}>
           <Title>{TEXTS.menuSettings}</Title>
+          <Gap h={8} />
 
           {/* Settings grouped in cards, like the practice cards (27 Nov) */}
           {/* Card 1: notifications in general */}
@@ -1778,12 +1856,12 @@ export default function App() {
                 <Button label={TEXTS.settingsOpenPhoneSettings} kind="secondary" onPress={openPhoneSettings} />
               </>
             ) : null}
-            <View style={styles.settingRow}>
-              <Text style={[styles.body, styles.bold]}>{TEXTS.settingsSound}</Text>
+            <View style={styles.cardRow}>
+              <Text style={[styles.body, styles.m0, styles.bold]}>{TEXTS.settingsSound}</Text>
               <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.sound} onValueChange={(v) => updateAndReplan({ sound: v })} />
             </View>
-            <View style={[styles.settingRow, { marginBottom: 0 }]}>
-              <Text style={[styles.body, styles.bold]}>{TEXTS.settingsVibration}</Text>
+            <View style={styles.cardRow}>
+              <Text style={[styles.body, styles.m0, styles.bold]}>{TEXTS.settingsVibration}</Text>
               <Switch trackColor={{ true: G.cta[0], false: C.line }} value={settings.vibration} onValueChange={(v) => updateSettings({ vibration: v })} />
             </View>
           </View>
@@ -1811,9 +1889,10 @@ export default function App() {
           {/* Card 3: one-off reminder */}
           <View style={styles.settingsCard}>
             <Text style={[styles.subtitle, styles.cardHeading]}>{TEXTS.settingsOneOff}</Text>
-            <Text style={styles.body}>
+            <Text style={[styles.body, styles.m0]}>
               {settings.reminder ? formatReminder(settings.reminder.at) : TEXTS.settingsOneOffNone}
             </Text>
+            <Gap h={10} />
             <Button
               label={settings.reminder ? TEXTS.settingsOneOffChange : TEXTS.settingsOneOffSet}
               kind="secondary"
@@ -1824,6 +1903,7 @@ export default function App() {
           {/* Card 4: beta feedback */}
           <View style={styles.settingsCard}>
             <Text style={[styles.subtitle, styles.cardHeading]}>{TEXTS.settingsBeta}</Text>
+            <Gap h={2} />
             <Button label={TEXTS.feedbackButton} onPress={openFeedback} />
             {message ? <Text style={styles.warning}>{message}</Text> : null}
           </View>
@@ -1930,7 +2010,7 @@ const styles = StyleSheet.create({
   // card and section titles Semi Bold 16; small text Regular 14.
   title: {
     fontFamily: SERIF, fontSize: 24, lineHeight: 32, fontWeight: '400', color: C.text,
-    marginTop: 24, marginBottom: 8, textAlign: 'center',
+    marginTop: 24, marginBottom: 0, textAlign: 'center', // gaps after a title come from <Gap>
   },
   titleSmallSize: { fontSize: 20, lineHeight: 28 },
   subtitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text, marginTop: 8, marginBottom: 4 },
@@ -1958,7 +2038,7 @@ const styles = StyleSheet.create({
   buttonLink: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginVertical: 4 },
   buttonTextLink: { color: C.accent, fontSize: 16 },
   bubbleGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginVertical: 16 },
-  bubbleGrid2: { rowGap: 18, columnGap: 20 },
+  bubbleGrid2: { rowGap: 18, columnGap: 20, marginTop: 8 }, // bubble (24) + 8 = 32
   bubbleShadow: {
     shadowColor: '#0A0514', shadowOpacity: 0.32, shadowRadius: 18, shadowOffset: { width: 0, height: 12 },
     elevation: 8,
@@ -1974,9 +2054,9 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text, marginBottom: 4 },
   countdown: {
     fontSize: 96, lineHeight: 112, fontWeight: '400', textAlign: 'center', color: C.text, letterSpacing: -2,
-    marginBottom: 24, fontVariant: ['tabular-nums'],
+    marginBottom: 26, // + 6 of the button = 32 fontVariant: ['tabular-nums'],
   },
-  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 12, gap: 14 },
+  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 6, marginBottom: 10, gap: 14 }, // card → 32, → Start 16
   stepButton: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: C.surfaceStrong, alignItems: 'center', justifyContent: 'center',
   },
@@ -2001,16 +2081,21 @@ const styles = StyleSheet.create({
   wheelText: { fontSize: 16, color: C.text, fontVariant: ['tabular-nums'] },
   wheelTextSelected: { fontWeight: '600' },
   centered: { flexGrow: 1, justifyContent: 'center', paddingBottom: 120 },
-  after: { marginTop: 32 },
+  after: { marginTop: 26 }, // + 6 of the first button = 32 px visible gap
+  m0: { marginTop: 0, marginBottom: 0 },
+  stepRow: { flexDirection: 'row', gap: 10 },
+  stepNumber: { fontSize: 14, lineHeight: 24, fontWeight: '600', color: C.accent, minWidth: 12 },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
+  choiceHalf: { width: '48%', alignItems: 'center' },
   bold: { fontWeight: '600' },
-  hoursRange: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 8 },
+  hoursRange: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
   timePill: {
     minHeight: 40, minWidth: 72, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: C.line,
     alignItems: 'center', justifyContent: 'center',
   },
   settingsCard: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginVertical: 8 },
   cardHeading: { marginTop: 0, marginBottom: 8 },
-  settingRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  settingRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowHeading: { marginTop: 0, marginBottom: 0 }, // no extra margin, so the title is centred on its switch
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   splashTitle: { fontFamily: SERIF, fontSize: 44, lineHeight: 52, color: C.text },
@@ -2018,13 +2103,13 @@ const styles = StyleSheet.create({
   stepButtonSmall: {
     width: 32, height: 32, borderRadius: 16, backgroundColor: C.surfaceStrong, alignItems: 'center', justifyContent: 'center',
   },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   legendSwatch: { width: 14, height: 14, borderRadius: 4 },
   calendarSelected: { borderWidth: 2, borderColor: C.text }, // white: visible on light and dark days
   calendarDay: { color: C.text, fontSize: 14, fontWeight: '600' },
   entry: { backgroundColor: C.surface, borderRadius: 16, padding: 20, marginVertical: 6 },
   entryTitle: { fontSize: 16, lineHeight: 24, fontWeight: '600', color: C.text },
-  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 8, justifyContent: 'center' },
+  choiceRow: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 8, justifyContent: 'space-between' }, // 2 x 2 grid
   choice: {
     minHeight: 44,
     justifyContent: 'center',
@@ -2034,6 +2119,6 @@ const styles = StyleSheet.create({
     borderColor: C.line,
   },
   choiceSelected: { backgroundColor: C.band, borderColor: C.accent },
-  choiceText: { color: C.text, fontSize: 15 },
+  choiceText: { color: C.text, fontSize: 16 },
   choiceTextSelected: { fontWeight: '600' },
 });

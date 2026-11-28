@@ -23,7 +23,8 @@ export const APP_NAME = 'Mousse';
 
 export const TEXTS = {
   welcomeTitle: `Welcome to ${APP_NAME}!`,
-  welcomeBody: `You cannot always control your circumstances, but you can choose how you respond to them. ${APP_NAME} is a safe place where we guide you to become aware of your emotional state and keep up your daily practice throughout the day.`,
+  // Two paragraphs, split by a blank line (\n\n)
+  welcomeBody: `You cannot always control your circumstances, but you can choose how you respond to them.\n\n${APP_NAME} is a safe place where we guide you to become aware of your emotional state and keep up your daily practice throughout the day.`,
   methodTitle: 'How it works',
   methodSteps: [
     'A few times a day, a reminder invites you to check in and notice how you feel.',
@@ -74,7 +75,8 @@ export const TEXTS = {
   quickContinue: 'Continue',
 
   reminderAsk: 'Do you want to set up a reminder for the next session?',
-  thanksBody: "Thanks for recording!\nIt's consistency that matters!",
+  thanksTitle: 'Thanks for recording!', // S17 title (27 Nov: title first)
+  thanksBody: "It's consistency that matters!",
   anotherSessionAsk: 'Do you want to schedule another session?',
   yes: 'Yes!',
   no: 'No',

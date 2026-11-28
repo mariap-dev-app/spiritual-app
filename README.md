@@ -125,6 +125,17 @@ None in the screens. The "i" card (author and source) comes later.
 - Settings (0.7.7): "Notifications" centred on the same line as its switch. Grouped in four cards, like the practice cards: Notifications (switch, Sound, Vibration); Daily reminders (frequency, "Starting at", "Reminders stop at"); One-off reminder; Beta feedback. "Reminders stop at" moved into the Daily reminders card, as it only applies to them; the "Quiet hours" heading is no longer shown.
 - Fix (0.7.4): the timer stepper on S8 had been deleted by mistake in 0.7.1, which caused the error "Property 'Stepper' doesn't exist" after choosing a practice.
 
+### Final screen specs (0.8.0, 28 Nov)
+
+- One spacing scale on every screen (visible gaps): 16 px title → content, between blocks of a group and between cards; 32 px content → buttons and bubble → state bubbles; 24 px bubbles → Skip; 12 px between stacked buttons and between steps. In the code: titles have no bottom margin, texts use `styles.m0`, and gaps come from `<Gap h={...} />`.
+- S0: welcome text in two short paragraphs. S00, S6, S8: step numbers in pink (14 Semi Bold).
+- S0b and Settings: the four frequency options as a 2 x 2 grid of equal pills, 16 px text.
+- S4, S16: Skip as a pink text link, as on S15. S15: same layout as the check-in, so the bubble stays at the same height.
+- S6: intro line in pink. S9b: the saved date and time under "You are set up!".
+- S17: "Thanks for recording!" as the title, then "It's consistency that matters!", then the question in Semi Bold above the buttons.
+- S13: month view and legend in one card.
+- Not applied: chevron on the S8a practice cards (declined).
+
 ## Design (graphic chart of 25 Nov 2026)
 
 - Background: vertical gradient #3A2B52 → #42323C → #3A2A20, with four soft organic berry blobs (radial gradients) that drift up and down by 40 px, sway slightly and grow by 6 % over an 18 s cycle. Still when "Reduce motion" is on.
